@@ -2,6 +2,7 @@ node_modules/
 uploads/
 *.log
 Abrir Conferencia de Caixa.bat
+server.mjs
 inspect_*.mjs
 test_ui.mjs
 ui-check.png

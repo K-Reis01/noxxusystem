@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "local": "node server.mjs",
     "build": "echo Build pronto",
     "vercel-build": "echo Build pronto"
   },
