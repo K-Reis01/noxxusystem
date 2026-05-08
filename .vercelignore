@@ -3,5 +3,7 @@ uploads/
 *.log
 inspect_*.mjs
 test_ui.mjs
+server.mjs
+Abrir Conferencia de Caixa.bat
 ui-check.png
 .vercel/
