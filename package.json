@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo Build pronto",
-    "vercel-build": "echo Build pronto"
+    "build": "node scripts/build.mjs",
+    "vercel-build": "node scripts/build.mjs"
   },
   "dependencies": {
     "xlsx": "^0.18.5"
