@@ -47,6 +47,15 @@ function formatMethods(item) {
   return item.paymentMethods.length ? item.paymentMethods.join(" + ") : "Sem forma informada";
 }
 
+function cleanText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 function ticketItems() {
   return state.transactions.filter((item) => item.needsPhysicalCheck);
 }
@@ -104,6 +113,22 @@ function itemStatus(item) {
   if (status === "confirmed") return "Confirmado";
   if (status === "issue") return "Com problema";
   return "Pendente";
+}
+
+function isCustomerAccountReceipt(item) {
+  const text = cleanText(`${item.description} ${item.details?.join(" ") || ""}`);
+  return (
+    item.type === "REC" ||
+    (text.includes("receb") && text.includes("cliente")) ||
+    Math.abs(item.payments.contaCliente) > 0.009 ||
+    Math.abs(item.payments.parcelado) > 0.009
+  );
+}
+
+function customerName(item) {
+  const detail = item.details?.find((line) => cleanText(line).length > 2);
+  if (detail) return detail;
+  return item.description.replace(/receb\.?\s*de\s*parcela\s*-\s*cliente/iu, "").trim();
 }
 
 function renderSystem() {
@@ -501,6 +526,69 @@ function transactionHeader() {
   ];
 }
 
+function adjustmentRows() {
+  const manualVales = adjustment("valesManuais");
+  const dinheiroContado = adjustment("dinheiroContado");
+  const pixCnpj = adjustment("pixCnpj");
+  const devolucaoBaixa = adjustment("devolucaoBaixa");
+  const devolucaoSemEntrada = adjustment("devolucaoSemEntrada");
+  const devolucaoNovaVenda = adjustment("devolucaoNovaVenda");
+  const diferencaNovaVenda = adjustment("diferencaNovaVenda");
+
+  return [
+    ["Total de vales", manualVales, state.notes.vales || ""],
+    ["Dinheiro contado", dinheiroContado, state.notes.dinheiro || ""],
+    ["Pix CNPJ", pixCnpj, "Somado a contagem fisica do dinheiro"],
+    ["Devolucao A - baixa na conta", devolucaoBaixa, "Sai e entra novamente no sistema"],
+    ["Devolucao B - sem entrada", devolucaoSemEntrada, "Sai do caixa e deve ser revisada"],
+    ["Devolucao C - nova venda", devolucaoNovaVenda, "Valor devolvido usado em nova venda"],
+    ["Diferenca paga pelo cliente", diferencaNovaVenda, "Complemento recebido na nova venda"],
+    ["Total devolucoes informadas", devolucaoBaixa + devolucaoSemEntrada + devolucaoNovaVenda, ""],
+  ];
+}
+
+function customerAccountRows() {
+  return state.transactions
+    .filter(isCustomerAccountReceipt)
+    .map((item) => [
+      item.row,
+      item.sequence,
+      customerName(item),
+      item.description,
+      item.details?.join(" "),
+      item.employee,
+      item.type,
+      itemStatus(item),
+      rounded(item.amount),
+      rounded(item.payments.contaCliente),
+      rounded(item.payments.parcelado),
+      rounded(item.payments.dinheiro),
+      rounded(item.payments.cheques),
+      rounded(item.payments.cartaoDebito),
+      rounded(item.payments.cartaoCredito),
+      formatMethods(item),
+    ]);
+}
+
+function issueRows() {
+  return ticketItems()
+    .filter((item) => {
+      const status = state.statuses[item.id]?.status || "pending";
+      return status !== "confirmed";
+    })
+    .map((item) => [
+      item.row,
+      item.sequence,
+      item.description,
+      item.details?.join(" "),
+      item.employee,
+      formatMethods(item),
+      itemStatus(item),
+      state.statuses[item.id]?.note || "",
+      rounded(item.amount),
+    ]);
+}
+
 function exportReport() {
   if (!state.system) {
     window.alert("Importe o arquivo CX antes de exportar o relatorio.");
@@ -518,6 +606,17 @@ function exportReport() {
   const metadata = state.system.metadata || {};
   const stamp = new Date();
   const fileStamp = stamp.toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const checkRows = buildCheckData();
+  const automaticItems = neutralizedItems();
+  const customerRows = customerAccountRows();
+  const issues = issueRows();
+  const returnTotal = returnItems().reduce((total, item) => total + item.amount, 0);
+  const automaticTotal = automaticItems.reduce((total, item) => total + item.amount, 0);
+  const manualAdjustments = adjustmentRows();
+  const finalStatus =
+    count.pending === 0 && count.issues === 0 && checkRows.every((row) => row.level !== "bad")
+      ? "Conferencia sem divergencias"
+      : "Conferencia com pontos para revisar";
 
   appendSheet(workbook, "Resumo", [
     ["Relatorio de conferencia de caixa"],
@@ -525,27 +624,39 @@ function exportReport() {
     ["Empresa", metadata.empresa || ""],
     ["Caixa", metadata.caixa || ""],
     ["Linhas lidas", metadata.linhasLidas || ""],
+    ["Status final", finalStatus],
     [],
     ["Indicador", "Valor"],
     ["Tickets fisicos", count.total],
     ["Tickets confirmados", count.confirmed],
     ["Tickets pendentes", count.pending],
     ["Tickets com problema", count.issues],
+    ["Movimentos automaticos", automaticItems.length],
+    ["Contas de clientes recebidas", customerRows.length],
+    ["Devolucoes encontradas no CX", returnItems().length],
     [],
-    ["Forma", "Sistema", "Confirmado/Calculado", "Diferenca"],
+    ["Caixa conferido", "Sistema", "Confirmado/Calculado", "Diferenca"],
     ["Total caixa", totals.totalCaixa, confirmed.totalCaixa, diff(confirmed.totalCaixa, totals.totalCaixa)],
     ["Dinheiro", totals.dinheiro, confirmed.dinheiro, diff(confirmed.dinheiro, totals.dinheiro)],
     ["Cheques/Pix", totals.cheques, confirmed.cheques, diff(confirmed.cheques, totals.cheques)],
     ["Debito", totals.cartaoDebito, confirmed.cartaoDebito, diff(confirmed.cartaoDebito, totals.cartaoDebito)],
     ["Credito", totals.cartaoCredito, confirmed.cartaoCredito, diff(confirmed.cartaoCredito, totals.cartaoCredito)],
     ["Pre", totals.pre, confirmed.pre, diff(confirmed.pre, totals.pre)],
-    ["Vales", totals.vales, confirmed.vales, diff(confirmed.vales, totals.vales)],
-    ["Parcelado", totals.parcelado, confirmed.parcelado, diff(confirmed.parcelado, totals.parcelado)],
+    [],
+    ["Valores fora da conferencia fisica", "Valor", "Observacao"],
+    ["Vales do sistema", totals.vales, "Informativo"],
+    ["Parcelado do sistema", totals.parcelado, "Nao entra como ticket fisico"],
+    ["Contas de clientes no sistema", totals.contaCliente, "Recebimentos/baixas identificados no CX"],
+    ["Devolucoes encontradas no CX", rounded(returnTotal), "Detalhes na aba Devolucoes"],
+    ["Movimentos automaticos", rounded(automaticTotal), "Detalhes na aba Movimentos automaticos"],
+    [],
+    ["Ajustes manuais informados", "Valor", "Observacao"],
+    ...manualAdjustments,
   ]);
 
   appendSheet(workbook, "Checks", [
     ["Check", "Valor conferido", "Valor sistema", "Diferenca", "Status", "Detalhe"],
-    ...buildCheckData().map((row) => [
+    ...checkRows.map((row) => [
       row.label,
       row.left,
       row.right,
@@ -553,6 +664,17 @@ function exportReport() {
       row.status,
       row.detail,
     ]),
+  ]);
+
+  appendSheet(workbook, "Divergencias", [
+    ["Check", "Valor conferido", "Valor sistema", "Diferenca", "Status", "Detalhe"],
+    ...checkRows
+      .filter((row) => row.level !== "ok")
+      .map((row) => [row.label, row.left, row.right, row.difference, row.status, row.detail]),
+    [],
+    ["Tickets pendentes ou com problema"],
+    ["Linha CX", "Sequencia", "Descricao", "Detalhes", "Funcionario", "Formas", "Status", "Observacao", "Valor"],
+    ...issues,
   ]);
 
   appendSheet(workbook, "Tickets", [
@@ -570,6 +692,28 @@ function exportReport() {
     ...transactionRows(returnItems()),
   ]);
 
+  appendSheet(workbook, "Contas clientes", [
+    [
+      "Linha CX",
+      "Sequencia",
+      "Cliente",
+      "Descricao",
+      "Detalhes",
+      "Funcionario",
+      "Tipo",
+      "Status",
+      "Valor movimento",
+      "Conta cliente",
+      "Parcelado",
+      "Dinheiro",
+      "Cheques/Pix",
+      "Debito",
+      "Credito",
+      "Formas",
+    ],
+    ...customerRows,
+  ]);
+
   appendSheet(workbook, "Todos movimentos CX", [
     transactionHeader(),
     ...transactionRows(state.transactions),
@@ -577,13 +721,7 @@ function exportReport() {
 
   appendSheet(workbook, "Ajustes manuais", [
     ["Campo", "Valor", "Observacao"],
-    ["Total de vales", adjustment("valesManuais"), state.notes.vales || ""],
-    ["Dinheiro contado", adjustment("dinheiroContado"), state.notes.dinheiro || ""],
-    ["Pix CNPJ", adjustment("pixCnpj"), ""],
-    ["Devolucao A - baixa na conta", adjustment("devolucaoBaixa"), ""],
-    ["Devolucao B - sem entrada", adjustment("devolucaoSemEntrada"), ""],
-    ["Devolucao C - nova venda", adjustment("devolucaoNovaVenda"), ""],
-    ["Diferenca paga pelo cliente", adjustment("diferencaNovaVenda"), ""],
+    ...manualAdjustments,
   ]);
 
   window.XLSX.writeFile(workbook, `relatorio-conferencia-caixa-${fileStamp}.xlsx`);
