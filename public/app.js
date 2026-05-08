@@ -1,3 +1,5 @@
+import { parseSystemReport } from "./parse-cx-core.js";
+
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -389,16 +391,27 @@ function render() {
 }
 
 async function parseCx(file) {
-  const response = await fetch("/api/parse-cx", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    },
-    body: await file.arrayBuffer(),
+  if (!window.XLSX) {
+    throw new Error("Leitor de Excel nao carregou. Atualize a pagina e tente novamente.");
+  }
+
+  const workbook = window.XLSX.read(await file.arrayBuffer(), {
+    type: "array",
+    cellDates: false,
+    cellText: false,
+    raw: true,
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Erro ao ler arquivo.");
-  return payload;
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) {
+    throw new Error("O arquivo enviado nao possui abas.");
+  }
+  const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+    header: 1,
+    blankrows: true,
+    defval: null,
+    raw: true,
+  });
+  return parseSystemReport(rows);
 }
 
 document.querySelector("#cxFile").addEventListener("change", async (event) => {
