@@ -33,6 +33,10 @@ function diff(a, b) {
   return rounded(a - b);
 }
 
+function diffStatus(value) {
+  return Math.abs(value) < 0.01 ? "Batendo" : "Divergente";
+}
+
 function setStatus(kind, text) {
   const pill = document.querySelector("#statusPill");
   pill.className = `status-pill ${kind || ""}`.trim();
@@ -92,6 +96,14 @@ function sumConfirmedPayments() {
 
 function adjustment(name) {
   return parseAmount(state.adjustments[name]);
+}
+
+function itemStatus(item) {
+  if (item.autoConfirmed) return "Automatico";
+  const status = state.statuses[item.id]?.status || "pending";
+  if (status === "confirmed") return "Confirmado";
+  if (status === "issue") return "Com problema";
+  return "Pendente";
 }
 
 function renderSystem() {
@@ -274,18 +286,7 @@ function renderNeutralized() {
     .join("");
 }
 
-function checkRow(label, left, right, okText = "Batendo") {
-  const difference = diff(left, right);
-  const ok = Math.abs(difference) < 0.01;
-  const className = ok ? "ok" : "bad";
-  const detail = ok ? okText : `Diferenca: ${money.format(difference)}`;
-  return `<div class="check-row ${className}">
-    <span>${label}</span>
-    <strong>${detail}</strong>
-  </div>`;
-}
-
-function renderChecks() {
+function buildCheckData() {
   const totals = state.system?.totals;
   const count = counts();
   const confirmed = sumConfirmedPayments();
@@ -298,7 +299,113 @@ function renderChecks() {
     adjustment("devolucaoBaixa") +
     adjustment("devolucaoSemEntrada") +
     adjustment("devolucaoNovaVenda");
-  const checks = [];
+
+  if (!totals) return [];
+
+  const rows = [
+    {
+      label: "Tickets pendentes",
+      left: count.pending,
+      right: 0,
+      difference: count.pending,
+      status: count.pending === 0 ? "Batendo" : "Pendente",
+      level: count.pending === 0 ? "ok" : "warn",
+      detail: String(count.pending),
+    },
+    {
+      label: "Tickets com problema",
+      left: count.issues,
+      right: 0,
+      difference: count.issues,
+      status: count.issues === 0 ? "Batendo" : "Divergente",
+      level: count.issues === 0 ? "ok" : "bad",
+      detail: String(count.issues),
+    },
+  ];
+
+  const crossedRows = [
+    ["Total confirmado x Total do sistema", confirmed.totalCaixa, totals.totalCaixa],
+    ["Dinheiro confirmado x Dinheiro do sistema", confirmed.dinheiro, totals.dinheiro],
+    ["Cheques/Pix confirmados x Cheques/Pix do sistema", confirmed.cheques, totals.cheques],
+    [
+      "Cartoes confirmados x Debito + Credito do sistema",
+      confirmed.cartaoDebito + confirmed.cartaoCredito,
+      totals.cartaoDebito + totals.cartaoCredito,
+    ],
+    ["Pre confirmado x Pre do sistema", confirmed.pre, totals.pre],
+  ];
+
+  if (hasDinheiroContado) {
+    crossedRows.splice(2, 0, [
+      "Dinheiro contado + Pix CNPJ + Vales x Dinheiro do sistema",
+      dinheiroFisicoAjustado,
+      totals.dinheiro,
+    ]);
+  } else {
+    rows.push({
+      label: "Dinheiro contado fisicamente",
+      left: "",
+      right: totals.dinheiro,
+      difference: "",
+      status: "Pendente",
+      level: "warn",
+      detail: "Informe para validar sobra ou falta",
+    });
+  }
+
+  for (const [label, left, right] of crossedRows) {
+    const difference = diff(left, right);
+    const ok = Math.abs(difference) < 0.01;
+    rows.push({
+      label,
+      left: rounded(left),
+      right: rounded(right),
+      difference,
+      status: diffStatus(difference),
+      level: ok ? "ok" : "bad",
+      detail: ok ? "Batendo" : `Diferenca: ${money.format(difference)}`,
+    });
+  }
+
+  if (hasDinheiroContado) {
+    rows.push(
+      {
+        label: "Pix CNPJ somado a contagem fisica",
+        left: pixCnpj,
+        right: "",
+        difference: "",
+        status: "Informativo",
+        level: "warn",
+        detail: money.format(pixCnpj),
+      },
+      {
+        label: "Vales recompostos na contagem fisica",
+        left: manualVales,
+        right: "",
+        difference: "",
+        status: "Informativo",
+        level: "warn",
+        detail: money.format(manualVales),
+      },
+    );
+  }
+
+  rows.push({
+    label: "Devolucoes informadas para revisao",
+    left: devolucoes,
+    right: "",
+    difference: "",
+    status: "Informativo",
+    level: "warn",
+    detail: money.format(devolucoes),
+  });
+
+  return rows;
+}
+
+function renderChecks() {
+  const totals = state.system?.totals;
+  const count = counts();
 
   if (!totals) {
     document.querySelector("#checks").innerHTML =
@@ -306,57 +413,180 @@ function renderChecks() {
     return;
   }
 
-  checks.push(
-    `<div class="check-row ${count.pending === 0 ? "ok" : "warn"}">
-      <span>Tickets pendentes</span>
-      <strong>${count.pending}</strong>
-    </div>`,
-  );
-  checks.push(
-    `<div class="check-row ${count.issues === 0 ? "ok" : "bad"}">
-      <span>Tickets com problema</span>
-      <strong>${count.issues}</strong>
-    </div>`,
-  );
-  checks.push(checkRow("Total confirmado x Total do sistema", confirmed.totalCaixa, totals.totalCaixa));
-  checks.push(checkRow("Dinheiro confirmado x Dinheiro do sistema", confirmed.dinheiro, totals.dinheiro));
-  if (hasDinheiroContado) {
-    checks.push(checkRow("Dinheiro contado + Pix CNPJ + Vales x Dinheiro do sistema", dinheiroFisicoAjustado, totals.dinheiro));
-    checks.push(
-      `<div class="check-row warn">
-        <span>Pix CNPJ somado a contagem fisica</span>
-        <strong>${money.format(pixCnpj)}</strong>
+  const checks = buildCheckData();
+  const allOk = count.pending === 0 && count.issues === 0 && checks.every((row) => row.level !== "bad");
+  document.querySelector("#checks").innerHTML = checks
+    .map(
+      (row) => `<div class="check-row ${row.level}">
+        <span>${row.label}</span>
+        <strong>${row.detail}</strong>
       </div>`,
-    );
-    checks.push(
-      `<div class="check-row warn">
-        <span>Vales recompostos na contagem fisica</span>
-        <strong>${money.format(manualVales)}</strong>
-      </div>`,
-    );
-  } else {
-    checks.push(
-      `<div class="check-row warn">
-        <span>Dinheiro contado fisicamente</span>
-        <strong>Informe para validar sobra ou falta</strong>
-      </div>`,
-    );
-  }
-  checks.push(checkRow("Cheques/Pix confirmados x Cheques/Pix do sistema", confirmed.cheques, totals.cheques));
-  checks.push(checkRow("Cartoes confirmados x Debito + Credito do sistema", confirmed.cartaoDebito + confirmed.cartaoCredito, totals.cartaoDebito + totals.cartaoCredito));
-  checks.push(checkRow("Pre confirmado x Pre do sistema", confirmed.pre, totals.pre));
-  checks.push(
-    `<div class="check-row warn">
-      <span>Devolucoes informadas para revisao</span>
-      <strong>${money.format(devolucoes)}</strong>
-    </div>`,
-  );
-
-  const allOk = count.pending === 0 && count.issues === 0 && checks.every((row) => !row.includes("check-row bad"));
-  document.querySelector("#checks").innerHTML = checks.join("");
+    )
+    .join("");
   document.querySelector("#resultHint").textContent = allOk
     ? "Conferencia final sem divergencias"
     : "Revise os pontos destacados";
+}
+
+function sheetValue(value) {
+  return value === null || value === undefined ? "" : value;
+}
+
+function appendSheet(workbook, name, rows) {
+  const worksheet = window.XLSX.utils.aoa_to_sheet(rows);
+  const columnCount = Math.max(...rows.map((row) => row.length));
+  worksheet["!cols"] = Array.from({ length: columnCount }, (_, index) => {
+    const width = Math.max(
+      12,
+      ...rows.map((row) => String(sheetValue(row[index])).length + 2),
+    );
+    return { wch: Math.min(width, 48) };
+  });
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, name.slice(0, 31));
+}
+
+function paymentColumns(item) {
+  return [
+    item.payments.dinheiro,
+    item.payments.cheques,
+    item.payments.pre,
+    item.payments.cartaoDebito,
+    item.payments.cartaoCredito,
+    item.payments.vales,
+    item.payments.parcelado,
+    item.payments.contaCliente,
+    item.payments.outros,
+  ].map(rounded);
+}
+
+function transactionRows(items) {
+  return items.map((item) => [
+    item.row,
+    item.sequence,
+    item.description,
+    item.details?.join(" "),
+    item.employee,
+    item.type,
+    formatMethods(item),
+    itemStatus(item),
+    state.statuses[item.id]?.note || "",
+    rounded(item.amount),
+    rounded(item.cashAmount),
+    ...paymentColumns(item),
+  ]);
+}
+
+function transactionHeader() {
+  return [
+    "Linha CX",
+    "Sequencia",
+    "Descricao",
+    "Detalhes",
+    "Funcionario",
+    "Tipo",
+    "Formas",
+    "Status",
+    "Observacao",
+    "Valor movimento",
+    "Total caixa",
+    "Dinheiro",
+    "Cheques/Pix",
+    "Pre",
+    "Debito",
+    "Credito",
+    "Vales",
+    "Parcelado",
+    "Conta cliente",
+    "Outros",
+  ];
+}
+
+function exportReport() {
+  if (!state.system) {
+    window.alert("Importe o arquivo CX antes de exportar o relatorio.");
+    return;
+  }
+  if (!window.XLSX) {
+    window.alert("Exportador de Excel nao carregou. Atualize a pagina e tente novamente.");
+    return;
+  }
+
+  const workbook = window.XLSX.utils.book_new();
+  const totals = state.system.totals;
+  const confirmed = sumConfirmedPayments();
+  const count = counts();
+  const metadata = state.system.metadata || {};
+  const stamp = new Date();
+  const fileStamp = stamp.toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+  appendSheet(workbook, "Resumo", [
+    ["Relatorio de conferencia de caixa"],
+    ["Gerado em", stamp.toLocaleString("pt-BR")],
+    ["Empresa", metadata.empresa || ""],
+    ["Caixa", metadata.caixa || ""],
+    ["Linhas lidas", metadata.linhasLidas || ""],
+    [],
+    ["Indicador", "Valor"],
+    ["Tickets fisicos", count.total],
+    ["Tickets confirmados", count.confirmed],
+    ["Tickets pendentes", count.pending],
+    ["Tickets com problema", count.issues],
+    [],
+    ["Forma", "Sistema", "Confirmado/Calculado", "Diferenca"],
+    ["Total caixa", totals.totalCaixa, confirmed.totalCaixa, diff(confirmed.totalCaixa, totals.totalCaixa)],
+    ["Dinheiro", totals.dinheiro, confirmed.dinheiro, diff(confirmed.dinheiro, totals.dinheiro)],
+    ["Cheques/Pix", totals.cheques, confirmed.cheques, diff(confirmed.cheques, totals.cheques)],
+    ["Debito", totals.cartaoDebito, confirmed.cartaoDebito, diff(confirmed.cartaoDebito, totals.cartaoDebito)],
+    ["Credito", totals.cartaoCredito, confirmed.cartaoCredito, diff(confirmed.cartaoCredito, totals.cartaoCredito)],
+    ["Pre", totals.pre, confirmed.pre, diff(confirmed.pre, totals.pre)],
+    ["Vales", totals.vales, confirmed.vales, diff(confirmed.vales, totals.vales)],
+    ["Parcelado", totals.parcelado, confirmed.parcelado, diff(confirmed.parcelado, totals.parcelado)],
+  ]);
+
+  appendSheet(workbook, "Checks", [
+    ["Check", "Valor conferido", "Valor sistema", "Diferenca", "Status", "Detalhe"],
+    ...buildCheckData().map((row) => [
+      row.label,
+      row.left,
+      row.right,
+      row.difference,
+      row.status,
+      row.detail,
+    ]),
+  ]);
+
+  appendSheet(workbook, "Tickets", [
+    transactionHeader(),
+    ...transactionRows(ticketItems()),
+  ]);
+
+  appendSheet(workbook, "Movimentos automaticos", [
+    transactionHeader(),
+    ...transactionRows(neutralizedItems()),
+  ]);
+
+  appendSheet(workbook, "Devolucoes", [
+    transactionHeader(),
+    ...transactionRows(returnItems()),
+  ]);
+
+  appendSheet(workbook, "Todos movimentos CX", [
+    transactionHeader(),
+    ...transactionRows(state.transactions),
+  ]);
+
+  appendSheet(workbook, "Ajustes manuais", [
+    ["Campo", "Valor", "Observacao"],
+    ["Total de vales", adjustment("valesManuais"), state.notes.vales || ""],
+    ["Dinheiro contado", adjustment("dinheiroContado"), state.notes.dinheiro || ""],
+    ["Pix CNPJ", adjustment("pixCnpj"), ""],
+    ["Devolucao A - baixa na conta", adjustment("devolucaoBaixa"), ""],
+    ["Devolucao B - sem entrada", adjustment("devolucaoSemEntrada"), ""],
+    ["Devolucao C - nova venda", adjustment("devolucaoNovaVenda"), ""],
+    ["Diferenca paga pelo cliente", adjustment("diferencaNovaVenda"), ""],
+  ]);
+
+  window.XLSX.writeFile(workbook, `relatorio-conferencia-caixa-${fileStamp}.xlsx`);
 }
 
 function markTicket(status) {
@@ -454,6 +684,7 @@ document.querySelector("#previousTicket").addEventListener("click", () => {
 
 document.querySelector("#nextPending").addEventListener("click", goNextPending);
 document.querySelector("#finishAdjustments").addEventListener("click", () => setStep("result"));
+document.querySelector("#exportReportBtn").addEventListener("click", exportReport);
 
 document.querySelectorAll("[data-adjustment]").forEach((input) => {
   input.addEventListener("input", () => {
