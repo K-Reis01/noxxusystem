@@ -98,6 +98,24 @@ function amountForCashTotal(payments) {
   );
 }
 
+const CASH_TOTAL_KEYS = [
+  "contaCliente",
+  "dinheiro",
+  "cheques",
+  "pre",
+  "cartaoDebito",
+  "cartaoCredito",
+  "outros",
+];
+
+function relevantPaymentCount(payments) {
+  return CASH_TOTAL_KEYS.filter((key) => Math.abs(payments[key]) > 0.009).length;
+}
+
+function hasRelevantPayment(payments) {
+  return relevantPaymentCount(payments) > 0;
+}
+
 function sameMoneyAmount(left, right) {
   return Math.abs(Math.abs(left) - Math.abs(right)) < 0.01;
 }
@@ -129,10 +147,12 @@ function markNeutralizedPairs(transactions) {
     item.neutralized = true;
     item.neutralizedWith = pair.sequence;
     item.needsPhysicalCheck = false;
+    item.autoConfirmed = true;
 
     pair.neutralized = true;
     pair.neutralizedWith = item.sequence;
     pair.needsPhysicalCheck = false;
+    pair.autoConfirmed = true;
   }
 }
 
@@ -150,7 +170,8 @@ function parseTransactions(rows, totalRowIndex) {
     const cashAmount = amountForCashTotal(payments);
     const visibleAmount = cashAmount;
     const sequence = extractSequence(description);
-    if (!sequence && Math.abs(visibleAmount) < 0.009) continue;
+    const internalMovement = Math.abs(cashAmount) < 0.009 && relevantPaymentCount(payments) > 1;
+    if (!sequence && Math.abs(visibleAmount) < 0.009 && !hasRelevantPayment(payments)) continue;
 
     const isReturn = ["DEV", "DES", "ADS"].includes(type) || visibleAmount < 0;
     const details = [];
@@ -177,7 +198,9 @@ function parseTransactions(rows, totalRowIndex) {
       isReturn,
       neutralized: false,
       neutralizedWith: "",
-      needsPhysicalCheck: Math.abs(visibleAmount) > 0.009,
+      internalMovement,
+      autoConfirmed: internalMovement,
+      needsPhysicalCheck: Math.abs(visibleAmount) > 0.009 && !internalMovement,
     });
   }
 

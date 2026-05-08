@@ -52,7 +52,7 @@ function returnItems() {
 }
 
 function neutralizedItems() {
-  return state.transactions.filter((item) => item.neutralized);
+  return state.transactions.filter((item) => item.neutralized || item.internalMovement);
 }
 
 function counts() {
@@ -77,8 +77,9 @@ function sumConfirmedPayments() {
     totalCaixa: 0,
   };
 
-  for (const item of ticketItems()) {
-    if (state.statuses[item.id]?.status !== "confirmed") continue;
+  for (const item of state.transactions) {
+    const isConfirmed = state.statuses[item.id]?.status === "confirmed";
+    if (!isConfirmed && !item.autoConfirmed) continue;
     for (const key of Object.keys(base)) {
       if (key in item.payments) base[key] += item.payments[key];
     }
@@ -255,18 +256,21 @@ function renderNeutralized() {
   const items = neutralizedItems();
   const list = document.querySelector("#neutralizedList");
   if (!items.length) {
-    list.innerHTML = `<p class="empty-state">Nenhum par de entrada/saida foi anulado automaticamente.</p>`;
+    list.innerHTML = `<p class="empty-state">Nenhum movimento interno foi ajustado automaticamente.</p>`;
     return;
   }
 
   list.innerHTML = items
-    .map(
-      (item) => `<div class="return-row">
+    .map((item) => {
+      const detail = item.internalMovement
+        ? "movimento interno entre formas"
+        : `anula com ${item.neutralizedWith}`;
+      return `<div class="return-row">
         <strong>${item.sequence}</strong>
-        <span>${item.description} - anula com ${item.neutralizedWith}</span>
+        <span>${item.description} - ${detail}</span>
         <strong>${money.format(item.amount)}</strong>
-      </div>`,
-    )
+      </div>`;
+    })
     .join("");
 }
 
