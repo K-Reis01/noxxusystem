@@ -8,3 +8,5 @@ inspect_*.mjs
 test_ui.mjs
 ui-check.png
 .vercel/
+
+.vercel
