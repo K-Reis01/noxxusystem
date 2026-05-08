@@ -1,5 +1,28 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "public"
+      }
+    },
+    {
+      "src": "api/*.mjs",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.mjs"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
   "functions": {
     "api/parse-cx.mjs": {
       "maxDuration": 30
