@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Conferencia de Caixa</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">NOXXUS SYSTEM - By Kauã Reis</p>
+          <h1>Conferencia de Caixa</h1>
+        </div>
+        <div class="status-pill" id="statusPill">Aguardando CX</div>
+      </header>
+
+      <section class="summary-grid" aria-label="Resumo da conferencia">
+        <div class="metric">
+          <span>Total Sistema</span>
+          <strong id="systemTotal">R$ 0,00</strong>
+        </div>
+        <div class="metric">
+          <span>Tickets Conferidos</span>
+          <strong id="checkedCount">0/0</strong>
+        </div>
+        <div class="metric emphasis">
+          <span>Problemas</span>
+          <strong id="issueCount">0</strong>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel import-panel">
+          <div class="panel-head">
+            <h2>Arquivo CX</h2>
+            <span id="fileName">Nenhum arquivo</span>
+          </div>
+          <label class="drop-zone">
+            <input id="cxFile" type="file" accept=".xlsx,.xls" />
+            <span>Selecionar relatorio do sistema</span>
+          </label>
+          <div class="error-box" id="importError" hidden></div>
+
+          <div class="system-list" id="systemList"></div>
+        </aside>
+
+        <section class="entry-area">
+          <div class="stepper">
+            <button class="step active" data-step="tickets" type="button">1. Tickets</button>
+            <button class="step" data-step="adjustments" type="button">2. Devolucoes e ajustes</button>
+            <button class="step" data-step="result" type="button">3. Resultado</button>
+          </div>
+
+          <section class="tool-step active" id="ticketsStep">
+            <div class="section-head">
+              <h2>Conferencia dos tickets fisicos</h2>
+              <div class="actions">
+                <button class="ghost" id="previousTicket" type="button">Anterior</button>
+                <button id="nextPending" type="button">Proximo pendente</button>
+              </div>
+            </div>
+
+            <article class="ticket-card panel" id="ticketCard">
+              <p class="empty-state">Importe o arquivo CX para montar a fila de conferencia.</p>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Lista de movimentos</h3>
+                <span id="ticketListHint">0 itens</span>
+              </div>
+              <div class="ticket-list" id="ticketList"></div>
+            </article>
+          </section>
+
+          <section class="tool-step" id="adjustmentsStep">
+            <div class="section-head">
+              <h2>Devolucoes e ajustes</h2>
+              <button id="finishAdjustments" type="button">Gerar resultado</button>
+            </div>
+
+            <div class="forms-grid">
+              <article class="panel">
+                <h3>Informativos fora do caixa</h3>
+                <div class="field-grid">
+                  <label>Total de vales <input data-adjustment="valesManuais" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>Observacao <input data-note="vales" type="text" placeholder="Nao entra no total do caixa" /></label>
+                </div>
+              </article>
+
+              <article class="panel">
+                <h3>Contagem fisica</h3>
+                <div class="field-grid">
+                  <label>Dinheiro contado <input data-adjustment="dinheiroContado" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>Pix CNPJ <input data-adjustment="pixCnpj" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>Observacao <input data-note="dinheiro" type="text" placeholder="Sobra, falta ou detalhe" /></label>
+                </div>
+              </article>
+
+              <article class="panel">
+                <h3>Devolucoes</h3>
+                <div class="field-grid">
+                  <label>A) Baixa na conta <input data-adjustment="devolucaoBaixa" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>B) Devolucao sem entrada <input data-adjustment="devolucaoSemEntrada" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>C) Devolucao + nova venda <input data-adjustment="devolucaoNovaVenda" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>Diferenca paga pelo cliente <input data-adjustment="diferencaNovaVenda" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                </div>
+              </article>
+            </div>
+
+            <article class="panel">
+              <h3>Devolucoes encontradas no CX</h3>
+              <div class="return-list" id="returnList"></div>
+            </article>
+
+            <article class="panel">
+              <h3>Movimentos anulados automaticamente</h3>
+              <div class="return-list" id="neutralizedList"></div>
+            </article>
+          </section>
+
+          <section class="tool-step" id="resultStep">
+            <div class="section-head">
+              <h2>Resultado da conferencia</h2>
+              <button class="ghost" id="clearBtn" type="button">Limpar conferencia</button>
+            </div>
+
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Checks finais</h3>
+                <span id="resultHint">Importe o CX para iniciar</span>
+              </div>
+              <div class="checks" id="checks"></div>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
