@@ -1,0 +1,16 @@
+{
+  "name": "conferencia-caixa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "vercel-build": "echo Build pronto"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

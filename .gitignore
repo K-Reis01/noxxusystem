@@ -1,0 +1,7 @@
+node_modules/
+uploads/
+*.log
+inspect_*.mjs
+test_ui.mjs
+ui-check.png
+.vercel/
