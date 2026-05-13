@@ -11,8 +11,20 @@ const state = {
   statuses: {},
   currentIndex: 0,
   adjustments: {},
+  returnEntries: [],
   notes: {},
   step: "tickets",
+};
+
+const RETURN_TYPES = {
+  baixa_conta: "A) Baixa na conta",
+  sem_entrada: "B) Devolucao sem entrada",
+  nova_venda: "C) Devolucao + nova venda",
+};
+
+const SALE_VALUE_MODES = {
+  total_nota: "Valor total da nova nota",
+  pago_cliente: "Apenas o que foi pago pelo cliente",
 };
 
 function parseAmount(value) {
@@ -105,6 +117,18 @@ function sumConfirmedPayments() {
 
 function adjustment(name) {
   return parseAmount(state.adjustments[name]);
+}
+
+function returnEntriesTotal() {
+  return rounded(state.returnEntries.reduce((total, entry) => total + entry.amount, 0));
+}
+
+function returnEntriesByType(type) {
+  return rounded(
+    state.returnEntries
+      .filter((entry) => entry.type === type)
+      .reduce((total, entry) => total + entry.amount, 0),
+  );
 }
 
 function itemStatus(item) {
@@ -311,6 +335,37 @@ function renderNeutralized() {
     .join("");
 }
 
+function renderManualReturns() {
+  const list = document.querySelector("#manualReturnsList");
+  if (!list) return;
+  if (!state.returnEntries.length) {
+    list.innerHTML = `<p class="empty-state">Nenhuma devolucao lancada manualmente.</p>`;
+    return;
+  }
+
+  list.innerHTML = state.returnEntries
+    .map((entry) => {
+      const saleInfo = entry.type === "nova_venda"
+        ? ` - nova nota: ${money.format(entry.saleValue)} (${SALE_VALUE_MODES[entry.saleMode]})`
+        : "";
+      return `<div class="return-row manual-return-row">
+        <span>${RETURN_TYPES[entry.type]}${saleInfo}${entry.note ? ` - ${entry.note}` : ""}</span>
+        <strong>${money.format(entry.amount)}</strong>
+        <strong>${entry.createdAt}</strong>
+        <button data-remove-return="${entry.id}" type="button">Remover</button>
+      </div>`;
+    })
+    .join("");
+
+  document.querySelectorAll("[data-remove-return]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.returnEntries = state.returnEntries.filter((entry) => entry.id !== button.dataset.removeReturn);
+      renderManualReturns();
+      renderChecks();
+    });
+  });
+}
+
 function buildCheckData() {
   const totals = state.system?.totals;
   const count = counts();
@@ -320,10 +375,7 @@ function buildCheckData() {
   const pixCnpj = adjustment("pixCnpj");
   const dinheiroFisicoAjustado = dinheiroContado + pixCnpj + manualVales;
   const hasDinheiroContado = String(state.adjustments.dinheiroContado || "").trim() !== "";
-  const devolucoes =
-    adjustment("devolucaoBaixa") +
-    adjustment("devolucaoSemEntrada") +
-    adjustment("devolucaoNovaVenda");
+  const devolucoes = returnEntriesTotal();
 
   if (!totals) return [];
 
@@ -416,7 +468,7 @@ function buildCheckData() {
   }
 
   rows.push({
-    label: "Devolucoes informadas para revisao",
+    label: "Devolucoes lancadas para revisao",
     left: devolucoes,
     right: "",
     difference: "",
@@ -530,21 +582,28 @@ function adjustmentRows() {
   const manualVales = adjustment("valesManuais");
   const dinheiroContado = adjustment("dinheiroContado");
   const pixCnpj = adjustment("pixCnpj");
-  const devolucaoBaixa = adjustment("devolucaoBaixa");
-  const devolucaoSemEntrada = adjustment("devolucaoSemEntrada");
-  const devolucaoNovaVenda = adjustment("devolucaoNovaVenda");
-  const diferencaNovaVenda = adjustment("diferencaNovaVenda");
 
   return [
     ["Total de vales", manualVales, state.notes.vales || ""],
     ["Dinheiro contado", dinheiroContado, state.notes.dinheiro || ""],
     ["Pix CNPJ", pixCnpj, "Somado a contagem fisica do dinheiro"],
-    ["Devolucao A - baixa na conta", devolucaoBaixa, "Sai e entra novamente no sistema"],
-    ["Devolucao B - sem entrada", devolucaoSemEntrada, "Sai do caixa e deve ser revisada"],
-    ["Devolucao C - nova venda", devolucaoNovaVenda, "Valor devolvido usado em nova venda"],
-    ["Diferenca paga pelo cliente", diferencaNovaVenda, "Complemento recebido na nova venda"],
-    ["Total devolucoes informadas", devolucaoBaixa + devolucaoSemEntrada + devolucaoNovaVenda, ""],
+    ["Devolucao A - baixa na conta", returnEntriesByType("baixa_conta"), "Total dos lancamentos individuais"],
+    ["Devolucao B - sem entrada", returnEntriesByType("sem_entrada"), "Total dos lancamentos individuais"],
+    ["Devolucao C - nova venda", returnEntriesByType("nova_venda"), "Total dos lancamentos individuais"],
+    ["Total devolucoes lancadas", returnEntriesTotal(), ""],
   ];
+}
+
+function manualReturnRows() {
+  return state.returnEntries.map((entry, index) => [
+    index + 1,
+    RETURN_TYPES[entry.type],
+    entry.amount,
+    entry.type === "nova_venda" ? entry.saleValue : "",
+    entry.type === "nova_venda" ? SALE_VALUE_MODES[entry.saleMode] : "",
+    entry.note,
+    entry.createdAt,
+  ]);
 }
 
 function customerAccountRows() {
@@ -613,6 +672,7 @@ function exportReport() {
   const returnTotal = returnItems().reduce((total, item) => total + item.amount, 0);
   const automaticTotal = automaticItems.reduce((total, item) => total + item.amount, 0);
   const manualAdjustments = adjustmentRows();
+  const manualReturns = manualReturnRows();
   const finalStatus =
     count.pending === 0 && count.issues === 0 && checkRows.every((row) => row.level !== "bad")
       ? "Conferencia sem divergencias"
@@ -634,6 +694,7 @@ function exportReport() {
     ["Movimentos automaticos", automaticItems.length],
     ["Contas de clientes recebidas", customerRows.length],
     ["Devolucoes encontradas no CX", returnItems().length],
+    ["Devolucoes lancadas manualmente", manualReturns.length],
     [],
     ["Caixa conferido", "Sistema", "Confirmado/Calculado", "Diferenca"],
     ["Total caixa", totals.totalCaixa, confirmed.totalCaixa, diff(confirmed.totalCaixa, totals.totalCaixa)],
@@ -690,6 +751,11 @@ function exportReport() {
   appendSheet(workbook, "Devolucoes", [
     transactionHeader(),
     ...transactionRows(returnItems()),
+  ]);
+
+  appendSheet(workbook, "Devolucoes lancadas", [
+    ["Lancamento", "Tipo", "Valor devolvido", "Valor nova nota", "Tipo valor nova nota", "Observacao", "Criado em"],
+    ...manualReturns,
   ]);
 
   appendSheet(workbook, "Contas clientes", [
@@ -752,6 +818,44 @@ function goNextPending() {
   render();
 }
 
+function toggleReturnSaleFields() {
+  const isNewSale = document.querySelector("#returnType").value === "nova_venda";
+  document.querySelectorAll(".new-sale-field").forEach((field) => {
+    field.hidden = !isNewSale;
+  });
+}
+
+function addReturnEntry() {
+  const type = document.querySelector("#returnType").value;
+  const amountInput = document.querySelector("#returnAmount");
+  const saleValueInput = document.querySelector("#returnSaleValue");
+  const saleModeInput = document.querySelector("#returnSaleMode");
+  const noteInput = document.querySelector("#returnNote");
+  const amount = parseAmount(amountInput.value);
+  const saleValue = type === "nova_venda" ? parseAmount(saleValueInput.value) : 0;
+
+  if (amount <= 0) {
+    window.alert("Informe o valor devolvido para adicionar o lancamento.");
+    return;
+  }
+
+  state.returnEntries.push({
+    id: `${Date.now()}-${state.returnEntries.length}`,
+    type,
+    amount: rounded(amount),
+    saleValue: rounded(saleValue),
+    saleMode: saleModeInput.value,
+    note: noteInput.value.trim(),
+    createdAt: new Date().toLocaleString("pt-BR"),
+  });
+
+  amountInput.value = "";
+  saleValueInput.value = "";
+  noteInput.value = "";
+  renderManualReturns();
+  renderChecks();
+}
+
 function render() {
   renderSystem();
   renderSummary();
@@ -759,6 +863,7 @@ function render() {
   renderTicketList();
   renderReturns();
   renderNeutralized();
+  renderManualReturns();
   renderChecks();
 }
 
@@ -823,6 +928,8 @@ document.querySelector("#previousTicket").addEventListener("click", () => {
 document.querySelector("#nextPending").addEventListener("click", goNextPending);
 document.querySelector("#finishAdjustments").addEventListener("click", () => setStep("result"));
 document.querySelector("#exportReportBtn").addEventListener("click", exportReport);
+document.querySelector("#returnType").addEventListener("change", toggleReturnSaleFields);
+document.querySelector("#addReturnEntry").addEventListener("click", addReturnEntry);
 
 document.querySelectorAll("[data-adjustment]").forEach((input) => {
   input.addEventListener("input", () => {
@@ -840,13 +947,25 @@ document.querySelectorAll("[data-note]").forEach((input) => {
 document.querySelector("#clearBtn").addEventListener("click", () => {
   state.statuses = {};
   state.adjustments = {};
+  state.returnEntries = [];
+  state.notes = {};
   document.querySelectorAll("[data-adjustment]").forEach((input) => {
     input.value = "";
   });
+  document.querySelectorAll("[data-note]").forEach((input) => {
+    input.value = "";
+  });
+  document.querySelector("#returnType").value = "baixa_conta";
+  document.querySelector("#returnSaleMode").value = "total_nota";
+  document.querySelector("#returnAmount").value = "";
+  document.querySelector("#returnSaleValue").value = "";
+  document.querySelector("#returnNote").value = "";
+  toggleReturnSaleFields();
   state.currentIndex = 0;
   setStep("tickets");
   render();
 });
 
+toggleReturnSaleFields();
 setStep("tickets");
 render();

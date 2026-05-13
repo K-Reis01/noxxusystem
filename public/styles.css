@@ -26,7 +26,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -290,7 +291,8 @@ label {
   font-weight: 800;
 }
 
-input {
+input,
+select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -300,9 +302,14 @@ input {
   font-weight: 750;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--accent);
   outline: 3px solid rgba(39, 102, 123, 0.18);
+}
+
+.wide-field {
+  grid-column: 1 / -1;
 }
 
 .checks {
@@ -417,6 +424,16 @@ input:focus {
 
 .return-row {
   grid-template-columns: 92px 1fr 130px;
+}
+
+.manual-return-row {
+  grid-template-columns: 1fr 120px 130px 90px;
+}
+
+.manual-return-row button {
+  border-color: #8f1d16;
+  background: var(--bad);
+  padding: 7px 9px;
 }
 
 .check-row {

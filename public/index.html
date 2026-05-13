@@ -102,11 +102,25 @@
               <article class="panel">
                 <h3>Devolucoes</h3>
                 <div class="field-grid">
-                  <label>A) Baixa na conta <input data-adjustment="devolucaoBaixa" type="text" inputmode="decimal" placeholder="0,00" /></label>
-                  <label>B) Devolucao sem entrada <input data-adjustment="devolucaoSemEntrada" type="text" inputmode="decimal" placeholder="0,00" /></label>
-                  <label>C) Devolucao + nova venda <input data-adjustment="devolucaoNovaVenda" type="text" inputmode="decimal" placeholder="0,00" /></label>
-                  <label>Diferenca paga pelo cliente <input data-adjustment="diferencaNovaVenda" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label>Tipo
+                    <select id="returnType">
+                      <option value="baixa_conta">A) Baixa na conta</option>
+                      <option value="sem_entrada">B) Devolucao sem entrada</option>
+                      <option value="nova_venda">C) Devolucao + nova venda</option>
+                    </select>
+                  </label>
+                  <label>Valor devolvido <input id="returnAmount" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label class="new-sale-field">Valor da nova nota <input id="returnSaleValue" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                  <label class="new-sale-field">Tipo do valor
+                    <select id="returnSaleMode">
+                      <option value="total_nota">Valor total da nova nota</option>
+                      <option value="pago_cliente">Apenas o que foi pago pelo cliente</option>
+                    </select>
+                  </label>
+                  <label class="wide-field">Observacao <input id="returnNote" type="text" placeholder="Cliente, nota ou detalhe" /></label>
+                  <button id="addReturnEntry" type="button">Adicionar devolucao</button>
                 </div>
+                <div class="return-list" id="manualReturnsList"></div>
               </article>
             </div>
 
