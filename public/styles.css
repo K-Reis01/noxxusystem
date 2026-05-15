@@ -320,6 +320,10 @@ button.danger {
   background: var(--bad);
 }
 
+.reset-list-btn {
+  min-width: 130px;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

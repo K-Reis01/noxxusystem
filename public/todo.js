@@ -66,6 +66,14 @@ function removeTask(id) {
   render();
 }
 
+function resetTasks() {
+  const confirmed = window.confirm("Tem certeza que deseja limpar toda a lista?");
+  if (!confirmed) return;
+  tasks = [];
+  saveTasks();
+  render();
+}
+
 function priorityClass(priority) {
   return priority.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -168,6 +176,7 @@ document.querySelector("#brandMenuButton").addEventListener("click", (event) => 
   event.stopPropagation();
   toggleBrandToolbar();
 });
+document.querySelector("#resetTodoBtn").addEventListener("click", resetTasks);
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".brand-menu")) closeBrandToolbar();
 });
