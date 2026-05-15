@@ -45,12 +45,59 @@ select {
   padding: 12px 0 20px;
 }
 
+.brand-menu {
+  position: relative;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.brand-menu-button {
+  display: inline-flex;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.brand-menu-button:hover,
+.brand-menu-button:focus-visible {
+  color: #1f586b;
+  text-decoration: underline;
+}
+
+.brand-toolbar {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 180px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 12px 28px rgba(23, 32, 26, 0.16);
+  padding: 8px;
+}
+
+.brand-toolbar a {
+  display: block;
+  border-radius: 7px;
+  color: var(--ink);
+  font-weight: 800;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.brand-toolbar a:hover,
+.brand-toolbar a:focus-visible {
+  background: #f0f7f8;
+  color: var(--accent);
+  outline: none;
 }
 
 h1,
@@ -94,6 +141,30 @@ h3 {
   border-color: #f0aaa3;
   background: #fff1ef;
   color: var(--bad);
+}
+
+.back-link {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 800;
+  padding: 9px 12px;
+  text-decoration: none;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.placeholder-page {
+  min-height: 280px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
 }
 
 .summary-grid {

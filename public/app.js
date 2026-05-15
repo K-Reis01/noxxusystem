@@ -856,6 +856,21 @@ function addReturnEntry() {
   renderChecks();
 }
 
+function closeBrandToolbar() {
+  const button = document.querySelector("#brandMenuButton");
+  const toolbar = document.querySelector("#brandToolbar");
+  toolbar.hidden = true;
+  button.setAttribute("aria-expanded", "false");
+}
+
+function toggleBrandToolbar() {
+  const button = document.querySelector("#brandMenuButton");
+  const toolbar = document.querySelector("#brandToolbar");
+  const shouldOpen = toolbar.hidden;
+  toolbar.hidden = !shouldOpen;
+  button.setAttribute("aria-expanded", String(shouldOpen));
+}
+
 function render() {
   renderSystem();
   renderSummary();
@@ -930,6 +945,16 @@ document.querySelector("#finishAdjustments").addEventListener("click", () => set
 document.querySelector("#exportReportBtn").addEventListener("click", exportReport);
 document.querySelector("#returnType").addEventListener("change", toggleReturnSaleFields);
 document.querySelector("#addReturnEntry").addEventListener("click", addReturnEntry);
+document.querySelector("#brandMenuButton").addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleBrandToolbar();
+});
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".brand-menu")) closeBrandToolbar();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeBrandToolbar();
+});
 
 document.querySelectorAll("[data-adjustment]").forEach((input) => {
   input.addEventListener("input", () => {
