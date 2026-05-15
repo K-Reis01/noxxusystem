@@ -18,8 +18,8 @@ const state = {
 
 const RETURN_TYPES = {
   baixa_conta: "A) Baixa na conta",
-  sem_entrada: "B) Devolucao sem entrada",
-  nova_venda: "C) Devolucao + nova venda",
+  sem_entrada: "B) Devolução sem entrada",
+  nova_venda: "C) Devolução + nova venda",
 };
 
 const SALE_VALUE_MODES = {
@@ -132,7 +132,7 @@ function returnEntriesByType(type) {
 }
 
 function itemStatus(item) {
-  if (item.autoConfirmed) return "Automatico";
+  if (item.autoConfirmed) return "Automático";
   const status = state.statuses[item.id]?.status || "pending";
   if (status === "confirmed") return "Confirmado";
   if (status === "issue") return "Com problema";
@@ -163,9 +163,9 @@ function renderSystem() {
     ? [
         ["Dinheiro", totals.dinheiro],
         ["Cheques/Pix", totals.cheques],
-        ["Debito", totals.cartaoDebito],
-        ["Credito", totals.cartaoCredito],
-        ["Pre", totals.pre],
+        ["Débito", totals.cartaoDebito],
+        ["Crédito", totals.cartaoCredito],
+        ["Pré", totals.pre],
         ["Vales", totals.vales],
         ["Parcelado", totals.parcelado],
         ["Total", totals.totalCaixa],
@@ -173,9 +173,9 @@ function renderSystem() {
     : [
         ["Dinheiro", 0],
         ["Cheques/Pix", 0],
-        ["Debito", 0],
-        ["Credito", 0],
-        ["Pre", 0],
+        ["Débito", 0],
+        ["Crédito", 0],
+        ["Pré", 0],
       ];
 
   list.innerHTML = rows
@@ -221,7 +221,7 @@ function renderTicketCard() {
   const card = document.querySelector("#ticketCard");
   const item = currentTicket();
   if (!item) {
-    card.innerHTML = `<p class="empty-state">Importe o arquivo CX para montar a fila de conferencia.</p>`;
+    card.innerHTML = `<p class="empty-state">Importe o arquivo CX para montar a fila de conferência.</p>`;
     return;
   }
 
@@ -233,7 +233,7 @@ function renderTicketCard() {
   card.innerHTML = `
     <div class="ticket-main">
       <div>
-        <span class="ticket-sequence">${item.sequence || "Sem seq."}</span>
+        <span class="ticket-sequence">${item.sequence || "Sem sequência"}</span>
         <p class="empty-state">${item.description}</p>
         ${
           item.details?.length
@@ -250,14 +250,14 @@ function renderTicketCard() {
     <div class="ticket-meta">
       <div><span>Forma</span><strong>${formatMethods(item)}</strong></div>
       <div><span>Tipo</span><strong>${item.type}</strong></div>
-      <div><span>Funcionario</span><strong>${item.employee || "-"}</strong></div>
+      <div><span>Funcionário</span><strong>${item.employee || "-"}</strong></div>
       <div><span>Status</span><strong>${statusText}</strong></div>
     </div>
 
     ${note ? `<p class="empty-state">Obs.: ${note}</p>` : ""}
 
     <div class="ticket-actions">
-      <button id="confirmTicket" type="button">Confirmar ticket fisico</button>
+      <button id="confirmTicket" type="button">Confirmar ticket físico</button>
       <button class="danger" id="issueTicket" type="button">Marcar problema</button>
     </div>
   `;
@@ -298,7 +298,7 @@ function renderReturns() {
   const returns = returnItems();
   const list = document.querySelector("#returnList");
   if (!returns.length) {
-    list.innerHTML = `<p class="empty-state">Nenhuma devolucao foi identificada automaticamente no CX.</p>`;
+    list.innerHTML = `<p class="empty-state">Nenhuma devolução foi identificada automaticamente no CX.</p>`;
     return;
   }
 
@@ -339,7 +339,7 @@ function renderManualReturns() {
   const list = document.querySelector("#manualReturnsList");
   if (!list) return;
   if (!state.returnEntries.length) {
-    list.innerHTML = `<p class="empty-state">Nenhuma devolucao lancada manualmente.</p>`;
+    list.innerHTML = `<p class="empty-state">Nenhuma devolução lançada manualmente.</p>`;
     return;
   }
 
@@ -405,11 +405,11 @@ function buildCheckData() {
     ["Dinheiro confirmado x Dinheiro do sistema", confirmed.dinheiro, totals.dinheiro],
     ["Cheques/Pix confirmados x Cheques/Pix do sistema", confirmed.cheques, totals.cheques],
     [
-      "Cartoes confirmados x Debito + Credito do sistema",
+      "Cartões confirmados x Débito + Crédito do sistema",
       confirmed.cartaoDebito + confirmed.cartaoCredito,
       totals.cartaoDebito + totals.cartaoCredito,
     ],
-    ["Pre confirmado x Pre do sistema", confirmed.pre, totals.pre],
+    ["Pré confirmado x Pré do sistema", confirmed.pre, totals.pre],
   ];
 
   if (hasDinheiroContado) {
@@ -440,14 +440,14 @@ function buildCheckData() {
       difference,
       status: diffStatus(difference),
       level: ok ? "ok" : "bad",
-      detail: ok ? "Batendo" : `Diferenca: ${money.format(difference)}`,
+      detail: ok ? "Batendo" : `Diferença: ${money.format(difference)}`,
     });
   }
 
   if (hasDinheiroContado) {
     rows.push(
       {
-        label: "Pix CNPJ somado a contagem fisica",
+        label: "Pix CNPJ somado à contagem física",
         left: pixCnpj,
         right: "",
         difference: "",
@@ -456,7 +456,7 @@ function buildCheckData() {
         detail: money.format(pixCnpj),
       },
       {
-        label: "Vales recompostos na contagem fisica",
+        label: "Vales recompostos na contagem física",
         left: manualVales,
         right: "",
         difference: "",
@@ -468,7 +468,7 @@ function buildCheckData() {
   }
 
   rows.push({
-    label: "Devolucoes lancadas para revisao",
+    label: "Devoluções lançadas para revisão",
     left: devolucoes,
     right: "",
     difference: "",
@@ -486,7 +486,7 @@ function renderChecks() {
 
   if (!totals) {
     document.querySelector("#checks").innerHTML =
-      `<div class="check-row warn"><span>Arquivo CX</span><strong>Importe o relatorio para iniciar</strong></div>`;
+      `<div class="check-row warn"><span>Arquivo CX</span><strong>Importe o relatório para iniciar</strong></div>`;
     return;
   }
 
@@ -501,7 +501,7 @@ function renderChecks() {
     )
     .join("");
   document.querySelector("#resultHint").textContent = allOk
-    ? "Conferencia final sem divergencias"
+    ? "Conferência final sem divergências"
     : "Revise os pontos destacados";
 }
 
@@ -556,21 +556,21 @@ function transactionRows(items) {
 function transactionHeader() {
   return [
     "Linha CX",
-    "Sequencia",
-    "Descricao",
+    "Sequência",
+    "Descrição",
     "Detalhes",
-    "Funcionario",
+    "Funcionário",
     "Tipo",
     "Formas",
     "Status",
-    "Observacao",
+    "Observação",
     "Valor movimento",
     "Total caixa",
     "Dinheiro",
     "Cheques/Pix",
-    "Pre",
-    "Debito",
-    "Credito",
+    "Pré",
+    "Débito",
+    "Crédito",
     "Vales",
     "Parcelado",
     "Conta cliente",
@@ -586,11 +586,11 @@ function adjustmentRows() {
   return [
     ["Total de vales", manualVales, state.notes.vales || ""],
     ["Dinheiro contado", dinheiroContado, state.notes.dinheiro || ""],
-    ["Pix CNPJ", pixCnpj, "Somado a contagem fisica do dinheiro"],
-    ["Devolucao A - baixa na conta", returnEntriesByType("baixa_conta"), "Total dos lancamentos individuais"],
-    ["Devolucao B - sem entrada", returnEntriesByType("sem_entrada"), "Total dos lancamentos individuais"],
-    ["Devolucao C - nova venda", returnEntriesByType("nova_venda"), "Total dos lancamentos individuais"],
-    ["Total devolucoes lancadas", returnEntriesTotal(), ""],
+    ["Pix CNPJ", pixCnpj, "Somado à contagem física do dinheiro"],
+    ["Devolução A - baixa na conta", returnEntriesByType("baixa_conta"), "Total dos lançamentos individuais"],
+    ["Devolução B - sem entrada", returnEntriesByType("sem_entrada"), "Total dos lançamentos individuais"],
+    ["Devolução C - nova venda", returnEntriesByType("nova_venda"), "Total dos lançamentos individuais"],
+    ["Total de devoluções lançadas", returnEntriesTotal(), ""],
   ];
 }
 
@@ -650,11 +650,11 @@ function issueRows() {
 
 function exportReport() {
   if (!state.system) {
-    window.alert("Importe o arquivo CX antes de exportar o relatorio.");
+    window.alert("Importe o arquivo CX antes de exportar o relatório.");
     return;
   }
   if (!window.XLSX) {
-    window.alert("Exportador de Excel nao carregou. Atualize a pagina e tente novamente.");
+    window.alert("Exportador de Excel não carregou. Atualize a página e tente novamente.");
     return;
   }
 
@@ -675,11 +675,11 @@ function exportReport() {
   const manualReturns = manualReturnRows();
   const finalStatus =
     count.pending === 0 && count.issues === 0 && checkRows.every((row) => row.level !== "bad")
-      ? "Conferencia sem divergencias"
-      : "Conferencia com pontos para revisar";
+      ? "Conferência sem divergências"
+      : "Conferência com pontos para revisar";
 
   appendSheet(workbook, "Resumo", [
-    ["Relatorio de conferencia de caixa"],
+    ["Relatório de conferência de caixa"],
     ["Gerado em", stamp.toLocaleString("pt-BR")],
     ["Empresa", metadata.empresa || ""],
     ["Caixa", metadata.caixa || ""],
@@ -687,36 +687,36 @@ function exportReport() {
     ["Status final", finalStatus],
     [],
     ["Indicador", "Valor"],
-    ["Tickets fisicos", count.total],
+    ["Tickets físicos", count.total],
     ["Tickets confirmados", count.confirmed],
     ["Tickets pendentes", count.pending],
     ["Tickets com problema", count.issues],
-    ["Movimentos automaticos", automaticItems.length],
+    ["Movimentos automáticos", automaticItems.length],
     ["Contas de clientes recebidas", customerRows.length],
-    ["Devolucoes encontradas no CX", returnItems().length],
-    ["Devolucoes lancadas manualmente", manualReturns.length],
+    ["Devoluções encontradas no CX", returnItems().length],
+    ["Devoluções lançadas manualmente", manualReturns.length],
     [],
-    ["Caixa conferido", "Sistema", "Confirmado/Calculado", "Diferenca"],
+    ["Caixa conferido", "Sistema", "Confirmado/Calculado", "Diferença"],
     ["Total caixa", totals.totalCaixa, confirmed.totalCaixa, diff(confirmed.totalCaixa, totals.totalCaixa)],
     ["Dinheiro", totals.dinheiro, confirmed.dinheiro, diff(confirmed.dinheiro, totals.dinheiro)],
     ["Cheques/Pix", totals.cheques, confirmed.cheques, diff(confirmed.cheques, totals.cheques)],
-    ["Debito", totals.cartaoDebito, confirmed.cartaoDebito, diff(confirmed.cartaoDebito, totals.cartaoDebito)],
-    ["Credito", totals.cartaoCredito, confirmed.cartaoCredito, diff(confirmed.cartaoCredito, totals.cartaoCredito)],
-    ["Pre", totals.pre, confirmed.pre, diff(confirmed.pre, totals.pre)],
+    ["Débito", totals.cartaoDebito, confirmed.cartaoDebito, diff(confirmed.cartaoDebito, totals.cartaoDebito)],
+    ["Crédito", totals.cartaoCredito, confirmed.cartaoCredito, diff(confirmed.cartaoCredito, totals.cartaoCredito)],
+    ["Pré", totals.pre, confirmed.pre, diff(confirmed.pre, totals.pre)],
     [],
-    ["Valores fora da conferencia fisica", "Valor", "Observacao"],
+    ["Valores fora da conferência física", "Valor", "Observação"],
     ["Vales do sistema", totals.vales, "Informativo"],
-    ["Parcelado do sistema", totals.parcelado, "Nao entra como ticket fisico"],
+    ["Parcelado do sistema", totals.parcelado, "Não entra como ticket físico"],
     ["Contas de clientes no sistema", totals.contaCliente, "Recebimentos/baixas identificados no CX"],
-    ["Devolucoes encontradas no CX", rounded(returnTotal), "Detalhes na aba Devolucoes"],
-    ["Movimentos automaticos", rounded(automaticTotal), "Detalhes na aba Movimentos automaticos"],
+    ["Devoluções encontradas no CX", rounded(returnTotal), "Detalhes na aba Devoluções"],
+    ["Movimentos automáticos", rounded(automaticTotal), "Detalhes na aba Movimentos automáticos"],
     [],
-    ["Ajustes manuais informados", "Valor", "Observacao"],
+    ["Ajustes manuais informados", "Valor", "Observação"],
     ...manualAdjustments,
   ]);
 
   appendSheet(workbook, "Checks", [
-    ["Check", "Valor conferido", "Valor sistema", "Diferenca", "Status", "Detalhe"],
+    ["Check", "Valor conferido", "Valor sistema", "Diferença", "Status", "Detalhe"],
     ...checkRows.map((row) => [
       row.label,
       row.left,
@@ -728,13 +728,13 @@ function exportReport() {
   ]);
 
   appendSheet(workbook, "Divergencias", [
-    ["Check", "Valor conferido", "Valor sistema", "Diferenca", "Status", "Detalhe"],
+    ["Check", "Valor conferido", "Valor sistema", "Diferença", "Status", "Detalhe"],
     ...checkRows
       .filter((row) => row.level !== "ok")
       .map((row) => [row.label, row.left, row.right, row.difference, row.status, row.detail]),
     [],
     ["Tickets pendentes ou com problema"],
-    ["Linha CX", "Sequencia", "Descricao", "Detalhes", "Funcionario", "Formas", "Status", "Observacao", "Valor"],
+    ["Linha CX", "Sequência", "Descrição", "Detalhes", "Funcionário", "Formas", "Status", "Observação", "Valor"],
     ...issues,
   ]);
 
@@ -743,29 +743,29 @@ function exportReport() {
     ...transactionRows(ticketItems()),
   ]);
 
-  appendSheet(workbook, "Movimentos automaticos", [
+  appendSheet(workbook, "Movimentos automáticos", [
     transactionHeader(),
     ...transactionRows(neutralizedItems()),
   ]);
 
-  appendSheet(workbook, "Devolucoes", [
+  appendSheet(workbook, "Devoluções", [
     transactionHeader(),
     ...transactionRows(returnItems()),
   ]);
 
-  appendSheet(workbook, "Devolucoes lancadas", [
-    ["Lancamento", "Tipo", "Valor devolvido", "Valor nova nota", "Tipo valor nova nota", "Observacao", "Criado em"],
+  appendSheet(workbook, "Devoluções lançadas", [
+    ["Lançamento", "Tipo", "Valor devolvido", "Valor nova nota", "Tipo valor nova nota", "Observação", "Criado em"],
     ...manualReturns,
   ]);
 
   appendSheet(workbook, "Contas clientes", [
     [
       "Linha CX",
-      "Sequencia",
+      "Sequência",
       "Cliente",
-      "Descricao",
+      "Descrição",
       "Detalhes",
-      "Funcionario",
+      "Funcionário",
       "Tipo",
       "Status",
       "Valor movimento",
@@ -773,8 +773,8 @@ function exportReport() {
       "Parcelado",
       "Dinheiro",
       "Cheques/Pix",
-      "Debito",
-      "Credito",
+      "Débito",
+      "Crédito",
       "Formas",
     ],
     ...customerRows,
@@ -786,11 +786,11 @@ function exportReport() {
   ]);
 
   appendSheet(workbook, "Ajustes manuais", [
-    ["Campo", "Valor", "Observacao"],
+    ["Campo", "Valor", "Observação"],
     ...manualAdjustments,
   ]);
 
-  window.XLSX.writeFile(workbook, `relatorio-conferencia-caixa-${fileStamp}.xlsx`);
+  window.XLSX.writeFile(workbook, `relatório-conferência-caixa-${fileStamp}.xlsx`);
 }
 
 function markTicket(status) {
@@ -835,7 +835,7 @@ function addReturnEntry() {
   const saleValue = type === "nova_venda" ? parseAmount(saleValueInput.value) : 0;
 
   if (amount <= 0) {
-    window.alert("Informe o valor devolvido para adicionar o lancamento.");
+    window.alert("Informe o valor devolvido para adicionar o lançamento.");
     return;
   }
 
@@ -888,7 +888,7 @@ function render() {
 
 async function parseCx(file) {
   if (!window.XLSX) {
-    throw new Error("Leitor de Excel nao carregou. Atualize a pagina e tente novamente.");
+    throw new Error("Leitor de Excel não carregou. Atualize a página e tente novamente.");
   }
 
   const workbook = window.XLSX.read(await file.arrayBuffer(), {
@@ -899,7 +899,7 @@ async function parseCx(file) {
   });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) {
-    throw new Error("O arquivo enviado nao possui abas.");
+    throw new Error("O arquivo enviado não possui abas.");
   }
   const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
     header: 1,
@@ -927,7 +927,7 @@ document.querySelector("#cxFile").addEventListener("change", async (event) => {
     render();
   } catch (error) {
     setStatus("bad", "Erro no CX");
-    document.querySelector("#fileName").textContent = "Arquivo invalido";
+    document.querySelector("#fileName").textContent = "Arquivo inválido";
     document.querySelector("#importError").textContent = error.message;
     document.querySelector("#importError").hidden = false;
     event.target.value = "";

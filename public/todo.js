@@ -2,6 +2,7 @@ const STORAGE_KEY = "noxxus.todo.tasks";
 
 let tasks = loadTasks();
 const PRIORITY_ORDER = { Alta: 3, Media: 2, Baixa: 1 };
+const PRIORITY_LABELS = { Alta: "Alta", Media: "Média", Baixa: "Baixa" };
 
 function loadTasks() {
   try {
@@ -78,6 +79,10 @@ function priorityClass(priority) {
   return priority.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+function priorityLabel(priority) {
+  return PRIORITY_LABELS[priority] || priority;
+}
+
 function orderedTasks(items) {
   return [...items].sort((left, right) => {
     const priorityDiff = (PRIORITY_ORDER[right.priority] || 0) - (PRIORITY_ORDER[left.priority] || 0);
@@ -91,13 +96,13 @@ function taskCard(task, completed = false) {
   return `<article class="todo-card ${completed ? "completed" : ""}">
     <div class="todo-card-head">
       <h3>${task.name}</h3>
-      <span class="priority-pill ${priorityClass(task.priority)}">${task.priority}</span>
+      <span class="priority-pill ${priorityClass(task.priority)}">${priorityLabel(task.priority)}</span>
     </div>
     <div class="todo-meta">
       <span>${task.done}/${task.quantity} tarefas</span>
       <strong>${taskPercent}%</strong>
     </div>
-    <div class="progress-bar" aria-label="Conclusao individual">
+        <div class="progress-bar" aria-label="Conclusão individual">
       <span style="width: ${taskPercent}%"></span>
     </div>
     <div class="todo-actions">
@@ -132,7 +137,7 @@ function renderList() {
   }
 
   if (!completedTasks.length) {
-    completedList.innerHTML = `<p class="empty-state">Nenhuma tarefa concluida.</p>`;
+    completedList.innerHTML = `<p class="empty-state">Nenhuma tarefa concluída.</p>`;
   } else {
     completedList.innerHTML = completedTasks.map((task) => taskCard(task, true)).join("");
   }

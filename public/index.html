@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Conferencia de Caixa</title>
+    <title>Conferência de Caixa</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -17,12 +17,12 @@
           <nav class="brand-toolbar" id="brandToolbar" hidden>
             <a href="/todo.html">To Do List</a>
           </nav>
-          <h1>Conferencia de Caixa</h1>
+          <h1>Conferência de Caixa</h1>
         </div>
         <div class="status-pill" id="statusPill">Aguardando CX</div>
       </header>
 
-      <section class="summary-grid" aria-label="Resumo da conferencia">
+      <section class="summary-grid" aria-label="Resumo da conferência">
         <div class="metric">
           <span>Total Sistema</span>
           <strong id="systemTotal">R$ 0,00</strong>
@@ -45,7 +45,7 @@
           </div>
           <label class="drop-zone">
             <input id="cxFile" type="file" accept=".xlsx,.xls" />
-            <span>Selecionar relatorio do sistema</span>
+            <span>Selecionar relatório do sistema</span>
           </label>
           <div class="error-box" id="importError" hidden></div>
 
@@ -55,21 +55,21 @@
         <section class="entry-area">
           <div class="stepper">
             <button class="step active" data-step="tickets" type="button">1. Tickets</button>
-            <button class="step" data-step="adjustments" type="button">2. Devolucoes e ajustes</button>
+            <button class="step" data-step="adjustments" type="button">2. Devoluções e ajustes</button>
             <button class="step" data-step="result" type="button">3. Resultado</button>
           </div>
 
           <section class="tool-step active" id="ticketsStep">
             <div class="section-head">
-              <h2>Conferencia dos tickets fisicos</h2>
+              <h2>Conferência dos tickets físicos</h2>
               <div class="actions">
                 <button class="ghost" id="previousTicket" type="button">Anterior</button>
-                <button id="nextPending" type="button">Proximo pendente</button>
+                <button id="nextPending" type="button">Próximo pendente</button>
               </div>
             </div>
 
             <article class="ticket-card panel" id="ticketCard">
-              <p class="empty-state">Importe o arquivo CX para montar a fila de conferencia.</p>
+              <p class="empty-state">Importe o arquivo CX para montar a fila de conferência.</p>
             </article>
 
             <article class="panel">
@@ -83,7 +83,7 @@
 
           <section class="tool-step" id="adjustmentsStep">
             <div class="section-head">
-              <h2>Devolucoes e ajustes</h2>
+              <h2>Devoluções e ajustes</h2>
               <button id="finishAdjustments" type="button">Gerar resultado</button>
             </div>
 
@@ -92,27 +92,27 @@
                 <h3>Informativos fora do caixa</h3>
                 <div class="field-grid">
                   <label>Total de vales <input data-adjustment="valesManuais" type="text" inputmode="decimal" placeholder="0,00" /></label>
-                  <label>Observacao <input data-note="vales" type="text" placeholder="Nao entra no total do caixa" /></label>
+                  <label>Observação <input data-note="vales" type="text" placeholder="Não entra no total do caixa" /></label>
                 </div>
               </article>
 
               <article class="panel">
-                <h3>Contagem fisica</h3>
+                <h3>Contagem física</h3>
                 <div class="field-grid">
                   <label>Dinheiro contado <input data-adjustment="dinheiroContado" type="text" inputmode="decimal" placeholder="0,00" /></label>
                   <label>Pix CNPJ <input data-adjustment="pixCnpj" type="text" inputmode="decimal" placeholder="0,00" /></label>
-                  <label>Observacao <input data-note="dinheiro" type="text" placeholder="Sobra, falta ou detalhe" /></label>
+                  <label>Observação <input data-note="dinheiro" type="text" placeholder="Sobra, falta ou detalhe" /></label>
                 </div>
               </article>
 
               <article class="panel">
-                <h3>Devolucoes</h3>
+                <h3>Devoluções</h3>
                 <div class="field-grid">
                   <label>Tipo
                     <select id="returnType">
                       <option value="baixa_conta">A) Baixa na conta</option>
-                      <option value="sem_entrada">B) Devolucao sem entrada</option>
-                      <option value="nova_venda">C) Devolucao + nova venda</option>
+                      <option value="sem_entrada">B) Devolução sem entrada</option>
+                      <option value="nova_venda">C) Devolução + nova venda</option>
                     </select>
                   </label>
                   <label>Valor devolvido <input id="returnAmount" type="text" inputmode="decimal" placeholder="0,00" /></label>
@@ -123,15 +123,15 @@
                       <option value="pago_cliente">Apenas o que foi pago pelo cliente</option>
                     </select>
                   </label>
-                  <label class="wide-field">Observacao <input id="returnNote" type="text" placeholder="Cliente, nota ou detalhe" /></label>
-                  <button id="addReturnEntry" type="button">Adicionar devolucao</button>
+                  <label class="wide-field">Observação <input id="returnNote" type="text" placeholder="Cliente, nota ou detalhe" /></label>
+                  <button id="addReturnEntry" type="button">Adicionar devolução</button>
                 </div>
                 <div class="return-list" id="manualReturnsList"></div>
               </article>
             </div>
 
             <article class="panel">
-              <h3>Devolucoes encontradas no CX</h3>
+              <h3>Devoluções encontradas no CX</h3>
               <div class="return-list" id="returnList"></div>
             </article>
 
@@ -143,10 +143,10 @@
 
           <section class="tool-step" id="resultStep">
             <div class="section-head">
-              <h2>Resultado da conferencia</h2>
+              <h2>Resultado da conferência</h2>
               <div class="actions">
-                <button id="exportReportBtn" type="button">Exportar relatorio</button>
-                <button class="ghost" id="clearBtn" type="button">Limpar conferencia</button>
+                <button id="exportReportBtn" type="button">Exportar relatório</button>
+                <button class="ghost" id="clearBtn" type="button">Limpar conferência</button>
               </div>
             </div>
 

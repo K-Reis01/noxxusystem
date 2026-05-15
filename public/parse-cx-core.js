@@ -68,9 +68,9 @@ function paymentLabels(payments) {
   return [
     ["Dinheiro", payments.dinheiro],
     ["Cheques/Pix", payments.cheques],
-    ["Pre", payments.pre],
-    ["Debito", payments.cartaoDebito],
-    ["Credito", payments.cartaoCredito],
+    ["Pré", payments.pre],
+    ["Débito", payments.cartaoDebito],
+    ["Crédito", payments.cartaoCredito],
     ["Vales", payments.vales],
     ["Parcelado", payments.parcelado],
     ["Outros", payments.outros],
@@ -217,10 +217,10 @@ export function parseSystemReport(rows) {
       row.some((cell) => ["pix (cheque)", "cartoes", "cheques(pre)"].includes(normalizeText(cell))),
     );
     if (looksLikeTicket) {
-      throw new Error("Este parece ser o arquivo Ticket 3. Importe aqui o relatorio CX exportado do sistema.");
+      throw new Error("Este parece ser o arquivo Ticket 3. Importe aqui o relatório CX exportado do sistema.");
     }
     throw new Error(
-      "Nao encontrei os totais do relatorio CX. Confira se o arquivo importado e o relatorio Caixa - Normal do sistema.",
+      "Não encontrei os totais do relatório CX. Confira se o arquivo importado é o relatório Caixa - Normal do sistema.",
     );
   }
 
