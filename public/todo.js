@@ -1,6 +1,7 @@
 const STORAGE_KEY = "noxxus.todo.tasks";
 
 let tasks = loadTasks();
+const PRIORITY_ORDER = { Alta: 3, Media: 2, Baixa: 1 };
 
 function loadTasks() {
   try {
@@ -69,6 +70,36 @@ function priorityClass(priority) {
   return priority.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+function orderedTasks(items) {
+  return [...items].sort((left, right) => {
+    const priorityDiff = (PRIORITY_ORDER[right.priority] || 0) - (PRIORITY_ORDER[left.priority] || 0);
+    if (priorityDiff) return priorityDiff;
+    return Number(right.id) - Number(left.id);
+  });
+}
+
+function taskCard(task, completed = false) {
+  const taskPercent = percent(task.done, task.quantity);
+  return `<article class="todo-card ${completed ? "completed" : ""}">
+    <div class="todo-card-head">
+      <h3>${task.name}</h3>
+      <span class="priority-pill ${priorityClass(task.priority)}">${task.priority}</span>
+    </div>
+    <div class="todo-meta">
+      <span>${task.done}/${task.quantity} tarefas</span>
+      <strong>${taskPercent}%</strong>
+    </div>
+    <div class="progress-bar" aria-label="Conclusao individual">
+      <span style="width: ${taskPercent}%"></span>
+    </div>
+    <div class="todo-actions">
+      <button class="ghost" data-minus="${task.id}" type="button">-1</button>
+      <button data-plus="${task.id}" type="button">+1</button>
+      <button class="danger" data-remove="${task.id}" type="button">Remover</button>
+    </div>
+  </article>`;
+}
+
 function renderChart() {
   const total = totals();
   const value = percent(total.done, total.total);
@@ -79,35 +110,24 @@ function renderChart() {
 
 function renderList() {
   const list = document.querySelector("#todoList");
-  document.querySelector("#todoListHint").textContent = `${tasks.length} tarefas`;
-  if (!tasks.length) {
+  const completedList = document.querySelector("#completedList");
+  const pendingTasks = orderedTasks(tasks.filter((task) => task.done < task.quantity));
+  const completedTasks = orderedTasks(tasks.filter((task) => task.done >= task.quantity));
+
+  document.querySelector("#todoListHint").textContent = `${pendingTasks.length} tarefas`;
+  document.querySelector("#completedListHint").textContent = `${completedTasks.length} tarefas`;
+
+  if (!pendingTasks.length) {
     list.innerHTML = `<p class="empty-state">Nenhuma tarefa cadastrada.</p>`;
-    return;
+  } else {
+    list.innerHTML = pendingTasks.map((task) => taskCard(task)).join("");
   }
 
-  list.innerHTML = tasks
-    .map((task) => {
-      const taskPercent = percent(task.done, task.quantity);
-      return `<article class="todo-card">
-        <div class="todo-card-head">
-          <h3>${task.name}</h3>
-          <span class="priority-pill ${priorityClass(task.priority)}">${task.priority}</span>
-        </div>
-        <div class="todo-meta">
-          <span>${task.done}/${task.quantity} tarefas</span>
-          <strong>${taskPercent}%</strong>
-        </div>
-        <div class="progress-bar" aria-label="Conclusao individual">
-          <span style="width: ${taskPercent}%"></span>
-        </div>
-        <div class="todo-actions">
-          <button class="ghost" data-minus="${task.id}" type="button">-1</button>
-          <button data-plus="${task.id}" type="button">+1</button>
-          <button class="danger" data-remove="${task.id}" type="button">Remover</button>
-        </div>
-      </article>`;
-    })
-    .join("");
+  if (!completedTasks.length) {
+    completedList.innerHTML = `<p class="empty-state">Nenhuma tarefa concluida.</p>`;
+  } else {
+    completedList.innerHTML = completedTasks.map((task) => taskCard(task, true)).join("");
+  }
 
   document.querySelectorAll("[data-minus]").forEach((button) => {
     button.addEventListener("click", () => changeDone(button.dataset.minus, -1));
