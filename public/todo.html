@@ -7,19 +7,59 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="page-dim" id="pageDim" hidden></div>
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">NOXXUS SYSTEM - By Kauã Reis</p>
+        <div class="brand-menu">
+          <button class="eyebrow brand-menu-button" id="brandMenuButton" type="button" aria-expanded="false" aria-controls="brandToolbar">
+            NOXXUS SYSTEM - By Kauã Reis
+          </button>
+          <nav class="brand-toolbar" id="brandToolbar" hidden>
+            <a href="/">Conferencia</a>
+          </nav>
           <h1>To Do List</h1>
         </div>
-        <a class="back-link" href="/">Voltar para conferencia</a>
       </header>
 
-      <section class="panel placeholder-page">
-        <h2>To Do List</h2>
-        <p class="empty-state">Pagina criada para a proxima etapa.</p>
+      <section class="todo-workspace">
+        <aside class="todo-left">
+          <article class="panel">
+            <h2>Lancamento</h2>
+            <form class="todo-form" id="todoForm">
+              <label>Nome da tarefa <input id="taskName" type="text" autocomplete="off" required /></label>
+              <label>Prioridade
+                <select id="taskPriority">
+                  <option value="Alta">Alta</option>
+                  <option value="Media">Media</option>
+                  <option value="Baixa">Baixa</option>
+                </select>
+              </label>
+              <label>Quantidade <input id="taskQuantity" type="number" min="1" step="1" value="1" required /></label>
+              <button type="submit">Adicionar tarefa</button>
+            </form>
+          </article>
+
+          <article class="panel progress-panel">
+            <div class="panel-head">
+              <h2>Conclusao total</h2>
+              <span id="todoTotalLabel">0/0</span>
+            </div>
+            <div class="progress-chart" id="todoChart">
+              <span id="todoPercent">0%</span>
+            </div>
+          </article>
+        </aside>
+
+        <section class="todo-right panel">
+          <div class="panel-head">
+            <h2>Lista</h2>
+            <span id="todoListHint">0 tarefas</span>
+          </div>
+          <div class="todo-list" id="todoList"></div>
+        </section>
       </section>
     </main>
+
+    <script type="module" src="/todo.js"></script>
   </body>
 </html>

@@ -1,15 +1,18 @@
 :root {
-  color-scheme: light;
-  --bg: #f6f4ee;
-  --ink: #17201a;
-  --muted: #657067;
-  --line: #d8d4c8;
-  --panel: #fffefa;
-  --ok: #1f7a4d;
-  --bad: #b42318;
-  --warn: #a15c07;
-  --accent: #27667b;
-  --accent-2: #6b7f36;
+  color-scheme: dark;
+  --bg: #07040c;
+  --ink: #f7f4ff;
+  --muted: #b9abc9;
+  --line: #2a2035;
+  --panel: #111018;
+  --panel-2: #191322;
+  --input: #08060d;
+  --ok: #a869ff;
+  --bad: #ff5c7a;
+  --warn: #d8a7ff;
+  --accent: #8a2dff;
+  --accent-2: #320d5f;
+  --accent-soft: #21102f;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -29,7 +32,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 10;
-  background: rgba(23, 32, 26, 0.38);
+  background: rgba(0, 0, 0, 0.58);
 }
 
 button,
@@ -75,7 +78,7 @@ select {
 
 .brand-menu-button:hover,
 .brand-menu-button:focus-visible {
-  color: #1f586b;
+  color: #c08cff;
   text-decoration: underline;
 }
 
@@ -87,8 +90,8 @@ select {
   min-width: 180px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 18px 46px rgba(23, 32, 26, 0.26);
+  background: #050308;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.55);
   padding: 8px;
 }
 
@@ -103,7 +106,7 @@ select {
 
 .brand-toolbar a:hover,
 .brand-toolbar a:focus-visible {
-  background: #f0f7f8;
+  background: var(--accent-soft);
   color: var(--accent);
   outline: none;
 }
@@ -140,14 +143,14 @@ h3 {
 }
 
 .status-pill.ok {
-  border-color: #98d2b1;
-  background: #edf9f1;
+  border-color: #69409b;
+  background: var(--accent-soft);
   color: var(--ok);
 }
 
 .status-pill.bad {
-  border-color: #f0aaa3;
-  background: #fff1ef;
+  border-color: #7d2438;
+  background: #2a0c16;
   color: var(--bad);
 }
 
@@ -175,6 +178,138 @@ h3 {
   gap: 10px;
 }
 
+.todo-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.48fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.todo-left {
+  display: grid;
+  gap: 16px;
+}
+
+.todo-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.progress-panel {
+  min-height: 320px;
+}
+
+.progress-chart {
+  --progress: 0%;
+  width: min(250px, 100%);
+  aspect-ratio: 1;
+  margin: 28px auto 8px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, var(--panel) 0 57%, transparent 58%),
+    conic-gradient(var(--accent) var(--progress), #271a35 0);
+  box-shadow: inset 0 0 30px rgba(138, 45, 255, 0.16);
+}
+
+.progress-chart span {
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.todo-right {
+  min-height: 620px;
+}
+
+.todo-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.todo-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input);
+  padding: 14px;
+}
+
+.todo-card-head,
+.todo-meta,
+.todo-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.todo-meta {
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+.todo-meta strong {
+  color: var(--ink);
+}
+
+.priority-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 5px 9px;
+}
+
+.priority-pill.alta {
+  border-color: #8a2dff;
+  background: #27103d;
+  color: #d9c0ff;
+}
+
+.priority-pill.media {
+  border-color: #69409b;
+  background: #1f142e;
+  color: #cbb2ef;
+}
+
+.priority-pill.baixa {
+  border-color: #41304f;
+  background: #15101d;
+  color: var(--muted);
+}
+
+.progress-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #271a35;
+  margin-top: 12px;
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.todo-actions {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.todo-actions button {
+  padding: 7px 10px;
+}
+
+button.danger {
+  border-color: #9c2440;
+  background: var(--bad);
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -187,7 +322,7 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  box-shadow: 0 1px 0 rgba(23, 32, 26, 0.04);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .metric {
@@ -208,8 +343,8 @@ h3 {
 }
 
 .metric.emphasis {
-  border-color: #adc1c8;
-  background: #f0f7f8;
+  border-color: #4b2470;
+  background: var(--accent-soft);
 }
 
 .workspace {
@@ -244,9 +379,9 @@ h3 {
   place-items: center;
   min-height: 96px;
   margin: 16px 0;
-  border: 1px dashed #8da6ae;
+  border: 1px dashed #6d4e8f;
   border-radius: 8px;
-  background: #f2f8f9;
+  background: var(--panel-2);
   color: var(--accent);
   cursor: pointer;
   font-weight: 800;
@@ -263,9 +398,9 @@ h3 {
 }
 
 .error-box {
-  border: 1px solid #f0aaa3;
+  border: 1px solid #7d2438;
   border-radius: 7px;
-  background: #fff4f2;
+  background: #2a0c16;
   color: var(--bad);
   font-size: 13px;
   font-weight: 800;
@@ -311,7 +446,7 @@ h3 {
 }
 
 .step.active {
-  border-color: #1f586b;
+  border-color: var(--accent);
   background: var(--accent);
   color: #ffffff;
 }
@@ -330,7 +465,7 @@ h3 {
 }
 
 button {
-  border: 1px solid #1f586b;
+  border: 1px solid var(--accent);
   border-radius: 7px;
   background: var(--accent);
   color: white;
@@ -375,7 +510,7 @@ select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--input);
   color: var(--ink);
   padding: 10px 11px;
   font-weight: 750;
@@ -384,7 +519,7 @@ select {
 input:focus,
 select:focus {
   border-color: var(--accent);
-  outline: 3px solid rgba(39, 102, 123, 0.18);
+  outline: 3px solid rgba(138, 45, 255, 0.22);
 }
 
 .wide-field {
@@ -446,7 +581,7 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 10px;
-  background: #ffffff;
+  background: var(--input);
 }
 
 .ticket-actions {
@@ -456,7 +591,7 @@ select:focus {
 }
 
 .ticket-actions .danger {
-  border-color: #8f1d16;
+  border-color: #9c2440;
   background: var(--bad);
 }
 
@@ -483,7 +618,7 @@ select:focus {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--input);
   padding: 10px;
 }
 
@@ -492,13 +627,13 @@ select:focus {
 }
 
 .ticket-row.confirmed {
-  border-color: #98d2b1;
-  background: #f3fbf5;
+  border-color: #69409b;
+  background: var(--accent-soft);
 }
 
 .ticket-row.issue {
-  border-color: #f0aaa3;
-  background: #fff4f2;
+  border-color: #7d2438;
+  background: #2a0c16;
 }
 
 .return-row {
@@ -510,7 +645,7 @@ select:focus {
 }
 
 .manual-return-row button {
-  border-color: #8f1d16;
+  border-color: #9c2440;
   background: var(--bad);
   padding: 7px 9px;
 }
@@ -538,7 +673,8 @@ select:focus {
 @media (max-width: 960px) {
   .workspace,
   .forms-grid,
-  .summary-grid {
+  .summary-grid,
+  .todo-workspace {
     grid-template-columns: 1fr;
   }
 
@@ -580,5 +716,12 @@ select:focus {
   .field-grid,
   .field-grid.groups {
     grid-template-columns: 1fr;
+  }
+
+  .todo-card-head,
+  .todo-meta,
+  .todo-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
