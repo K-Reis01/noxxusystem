@@ -1,5 +1,6 @@
 const DRAFT_KEY = "noxxus.daily-sheets.draft";
 const EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const desktopApi = window.noxxusDesktop || null;
 
 const pickerOptions = {
   types: [
@@ -46,6 +47,7 @@ const valeHeaders = ["DATA", "DISCRIMINAÇÃO", "VALOR", "OBS DIA"];
 
 let workbookHandle = null;
 let workbookFileName = "";
+let workbookPath = "";
 let existingRows = { fichas: [], vales: [] };
 let draft = loadDraft();
 
@@ -146,6 +148,17 @@ function setWorkbookText(state, detail) {
 }
 
 function updateWorkbookState() {
+  if (desktopApi) {
+    if (workbookPath) {
+      setStatus("ok", workbookFileName ? "Planilha encontrada" : "Planilha nova");
+      setWorkbookText(workbookFileName ? "Encontrada" : "Nova", workbookPath);
+    } else {
+      setStatus("", "Buscando");
+      setWorkbookText("Buscando", "O app está procurando a planilha nos arquivos.");
+    }
+    return;
+  }
+
   if (workbookFileName) {
     setStatus("ok", "Planilha autorizada");
     setWorkbookText("Autorizada", `Planilha carregada: ${workbookFileName}`);
@@ -242,16 +255,45 @@ function parseWorkbook(buffer) {
   };
 }
 
+function applyWorkbookStatus(status) {
+  workbookPath = status.path || "";
+  workbookFileName = status.exists ? status.fileName : "";
+  updateWorkbookState();
+}
+
 async function loadWorkbookFile(file, handle = null) {
   const workbookBuffer = await file.arrayBuffer();
   existingRows = parseWorkbook(workbookBuffer);
   workbookHandle = handle;
   workbookFileName = file.name || handle?.name || "fichas-diarias.xlsx";
+  workbookPath = workbookFileName;
   updateWorkbookState();
   render();
 }
 
+async function refreshDesktopWorkbook() {
+  try {
+    const payload = await desktopApi.readDailyWorkbook();
+    applyWorkbookStatus(payload);
+    if (payload.exists && payload.bytes?.length) {
+      const bytes = new Uint8Array(payload.bytes);
+      existingRows = parseWorkbook(bytes.buffer);
+    } else {
+      existingRows = { fichas: [], vales: [] };
+    }
+    render();
+  } catch (error) {
+    setStatus("bad", "Erro");
+    setWorkbookText("Erro", error.message || String(error));
+  }
+}
+
 async function authorizeWorkbook() {
+  if (desktopApi) {
+    await refreshDesktopWorkbook();
+    return;
+  }
+
   if ("showOpenFilePicker" in window) {
     try {
       const [handle] = await window.showOpenFilePicker(pickerOptions);
@@ -269,6 +311,11 @@ async function authorizeWorkbook() {
 }
 
 async function reloadWorkbook() {
+  if (desktopApi) {
+    await refreshDesktopWorkbook();
+    return;
+  }
+
   if (!workbookHandle) {
     await authorizeWorkbook();
     return;
@@ -386,17 +433,29 @@ async function requestSaveHandle() {
   return null;
 }
 
-async function writeWorkbook(bytes) {
+async function writeBrowserWorkbook(bytes) {
   const handle = await requestSaveHandle();
   if (!handle) {
     downloadBytes(bytes, "fichas-diarias.xlsx");
-    return "download";
+    return { mode: "download" };
   }
 
   const writable = await handle.createWritable();
   await writable.write(new Blob([bytes], { type: EXCEL_MIME }));
   await writable.close();
-  return "file";
+  return { mode: "file" };
+}
+
+async function writeWorkbook(bytes) {
+  if (desktopApi) {
+    const response = await desktopApi.saveDailyWorkbook(Array.from(new Uint8Array(bytes)));
+    workbookPath = response.path;
+    workbookFileName = response.fileName;
+    return { mode: "desktop", ...response };
+  }
+
+  if (workbookHandle) await createBackupDownload();
+  return writeBrowserWorkbook(bytes);
 }
 
 function readDailyForm() {
@@ -495,32 +554,34 @@ async function saveWorkbook() {
   const dates = [...new Set([...draft.fichas.map((row) => row.date), ...draft.vales.map((row) => row.date)])]
     .map(displayDate)
     .join(", ");
-  const targetText = workbookFileName
-    ? `A planilha "${workbookFileName}" será alterada.`
-    : "Uma nova planilha será criada.";
+  const targetText = desktopApi
+    ? `A planilha será salva em:\n${workbookPath || "pasta padrão do Noxxus System"}`
+    : workbookFileName
+      ? `A planilha "${workbookFileName}" será alterada.`
+      : "Uma nova planilha será criada.";
   const firstConfirm = window.confirm(
     `${targetText}\n\nFichas: ${draft.fichas.length}\nVales: ${draft.vales.length}\nDatas afetadas: ${dates}\n\nDeseja continuar?`,
   );
   if (!firstConfirm) return;
   const secondConfirm = window.confirm(
-    "Confirma novamente o salvamento? Se houver uma planilha autorizada, ela será substituída pelos dados atualizados.",
+    "Confirma novamente o salvamento? Se a planilha já existir, um backup será criado antes da alteração.",
   );
   if (!secondConfirm) return;
 
   try {
     const rowsToSave = mergedRows();
     const bytes = buildWorkbookBytes(rowsToSave);
-    if (workbookHandle) await createBackupDownload();
     const result = await writeWorkbook(bytes);
 
     existingRows = rowsToSave;
     draft = { fichas: [], vales: [] };
     saveDraft();
-    setStatus("ok", result === "download" ? "Arquivo baixado" : "Planilha salva");
+    setStatus("ok", result.mode === "download" ? "Arquivo baixado" : "Planilha salva");
+    const backupText = result.backupPath ? `\nBackup criado em:\n${result.backupPath}` : "";
     window.alert(
-      result === "download"
-        ? "Planilha gerada e baixada. Para alterar o mesmo arquivo diretamente, use Chrome ou Edge e autorize a planilha pelo botão da página."
-        : "Planilha salva com sucesso. Também baixei uma cópia de backup antes da alteração.",
+      result.mode === "download"
+        ? "Planilha gerada e baixada."
+        : `Planilha salva com sucesso em:\n${result.path || workbookFileName}${backupText}`,
     );
     render();
   } catch (error) {
@@ -591,4 +652,9 @@ document.querySelector("#workbookFileInput").addEventListener("change", async (e
   }
 });
 
-render();
+if (desktopApi) {
+  setStatus("", "Buscando");
+  refreshDesktopWorkbook();
+} else {
+  render();
+}

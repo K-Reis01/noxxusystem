@@ -1,14 +1,49 @@
 {
   "name": "conferencia-caixa",
   "version": "0.1.0",
+  "description": "Sistema desktop para conferência de caixa, tarefas e fichas diárias.",
+  "author": "Kauã Reis",
   "private": true,
   "type": "module",
-  "main": "index.js",
+  "main": "electron/main.mjs",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "desktop": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win portable",
     "vercel-build": "node scripts/build.mjs"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=20.16.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "br.com.noxxus.system",
+    "productName": "Noxxus System",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Noxxus-System-${version}.${ext}"
+    }
   }
 }

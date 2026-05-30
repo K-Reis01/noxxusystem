@@ -1,5 +1,6 @@
 node_modules/
 dist/
+release/
 uploads/
 *.log
 Abrir Conferencia de Caixa.bat
