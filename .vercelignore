@@ -1,4 +1,6 @@
 node_modules/
+dist/
+release/
 uploads/
 *.log
 inspect_*.mjs
