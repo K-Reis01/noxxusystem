@@ -534,10 +534,77 @@ button {
   font-weight: 800;
 }
 
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent);
+  color: white;
+  padding: 11px 14px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.button-link:hover,
+.button-link:focus-visible {
+  background: #9f4dff;
+  outline: none;
+}
+
 button.ghost {
   border-color: var(--line);
   background: var(--panel);
   color: var(--ink);
+}
+
+.download-workspace {
+  display: grid;
+  min-height: 420px;
+  place-items: center;
+}
+
+.download-card {
+  display: grid;
+  width: min(760px, 100%);
+  gap: 24px;
+  padding: 26px;
+}
+
+.download-card h2 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.download-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.download-meta div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input);
+  padding: 14px;
+}
+
+.download-meta span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.download-meta strong {
+  font-size: 22px;
+}
+
+.download-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .forms-grid {
@@ -798,7 +865,8 @@ select:focus {
 
   .field-grid,
   .daily-form,
-  .field-grid.groups {
+  .field-grid.groups,
+  .download-meta {
     grid-template-columns: 1fr;
   }
 
