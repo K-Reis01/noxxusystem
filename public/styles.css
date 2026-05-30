@@ -600,6 +600,10 @@ select:focus {
   outline: 3px solid rgba(138, 45, 255, 0.22);
 }
 
+.sr-only-file {
+  display: none;
+}
+
 .wide-field {
   grid-column: 1 / -1;
 }

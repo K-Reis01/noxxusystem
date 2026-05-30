@@ -20,7 +20,7 @@
           </nav>
           <h1>Fichas Diárias</h1>
         </div>
-        <div class="status-pill" id="dailyStatus">Verificando...</div>
+        <div class="status-pill" id="dailyStatus">Pronta</div>
       </header>
 
       <section class="summary-grid" aria-label="Resumo das fichas diárias">
@@ -79,9 +79,10 @@
           <article class="panel">
             <div class="panel-head">
               <h2>Prévia da planilha</h2>
-              <button class="ghost" id="refreshWorkbookBtn" type="button">Recarregar</button>
+              <button class="ghost" id="refreshWorkbookBtn" type="button">Autorizar planilha</button>
+              <input id="workbookFileInput" class="sr-only-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
             </div>
-            <p class="empty-state" id="workbookPath">Aguardando serviço local.</p>
+            <p class="empty-state" id="workbookPath">Nenhuma planilha autorizada. Ao salvar, o navegador pedirá onde criar o arquivo.</p>
             <div class="daily-preview">
               <table>
                 <thead>
@@ -114,7 +115,7 @@
               <h2>Salvar</h2>
               <span id="saveSummary">Nenhum lançamento pendente</span>
             </div>
-            <button id="saveWorkbookBtn" type="button">Salvar na planilha local</button>
+            <button id="saveWorkbookBtn" type="button">Salvar planilha</button>
           </article>
         </section>
       </section>
