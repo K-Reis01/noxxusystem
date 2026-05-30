@@ -5,11 +5,12 @@
   "author": "Kauã Reis",
   "private": true,
   "type": "module",
-  "main": "electron/main.mjs",
+  "main": "index.js",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "desktop": "npm run build && electron .",
-    "dist:win": "npm run build && electron-builder --win portable",
+    "build:desktop": "node scripts/build.mjs --desktop",
+    "desktop": "npm run build:desktop && electron electron/main.mjs",
+    "dist:win": "npm run build:desktop && electron-builder --win portable",
     "vercel-build": "node scripts/build.mjs"
   },
   "engines": {
@@ -25,6 +26,9 @@
   "build": {
     "appId": "br.com.noxxus.system",
     "productName": "Noxxus System",
+    "extraMetadata": {
+      "main": "electron/main.mjs"
+    },
     "directories": {
       "output": "release"
     },
