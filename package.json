@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "fichas:service": "node local-fichas-service.mjs",
     "vercel-build": "node scripts/build.mjs"
   },
   "engines": {

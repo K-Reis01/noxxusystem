@@ -20,14 +20,107 @@
           </nav>
           <h1>Fichas Diárias</h1>
         </div>
+        <div class="status-pill" id="dailyStatus">Verificando...</div>
       </header>
 
-      <section class="panel placeholder-page">
-        <h2>Fichas Diárias</h2>
-        <p class="empty-state">Página criada para a próxima etapa.</p>
+      <section class="summary-grid" aria-label="Resumo das fichas diárias">
+        <div class="metric">
+          <span>Planilha</span>
+          <strong id="workbookState">-</strong>
+        </div>
+        <div class="metric">
+          <span>Fichas carregadas</span>
+          <strong id="loadedDailyCount">0</strong>
+        </div>
+        <div class="metric emphasis">
+          <span>Lançamentos pendentes</span>
+          <strong id="pendingDailyCount">0</strong>
+        </div>
+      </section>
+
+      <section class="daily-workspace">
+        <aside class="daily-left">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Ficha diária</h2>
+              <span id="dailyTotalPreview">Total 1: R$ 0,00</span>
+            </div>
+            <form class="daily-form" id="dailyForm">
+              <label>Data <input id="dailyDate" type="date" required /></label>
+              <label>ECF <input id="dailyEcf" type="text" autocomplete="off" /></label>
+              <label>Acerto <input data-money-field id="dailyAcerto" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Dinheiro <input data-money-field id="dailyDinheiro" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>CH AV <input data-money-field id="dailyChAv" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Cartão <input data-money-field id="dailyCartao" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Vales <input data-money-field id="dailyVales" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Pré <input data-money-field id="dailyPre" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Vendas <input data-money-field id="dailyVendas" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Receb. <input data-money-field id="dailyReceb" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Descon. <input data-money-field id="dailyDescon" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>Juros <input data-money-field id="dailyJuros" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <label>CH P/ EMI <input data-money-field id="dailyChPEmi" type="text" inputmode="decimal" placeholder="0,00" /></label>
+              <button type="submit">Adicionar ficha</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <h2>Vale de caixa</h2>
+            <form class="daily-form" id="valeForm">
+              <label>Data <input id="valeDate" type="date" required /></label>
+              <label class="wide-field">Discriminação <input id="valeDescricao" type="text" autocomplete="off" required /></label>
+              <label>Valor <input id="valeValor" type="text" inputmode="decimal" placeholder="0,00" required /></label>
+              <label>Obs. dia <input id="valeObs" type="text" autocomplete="off" /></label>
+              <button type="submit">Adicionar vale</button>
+            </form>
+          </article>
+        </aside>
+
+        <section class="daily-right">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Prévia da planilha</h2>
+              <button class="ghost" id="refreshWorkbookBtn" type="button">Recarregar</button>
+            </div>
+            <p class="empty-state" id="workbookPath">Aguardando serviço local.</p>
+            <div class="daily-preview">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Acerto</th>
+                    <th>Dinheiro</th>
+                    <th>CH AV</th>
+                    <th>Cartão</th>
+                    <th>Total 1</th>
+                    <th>Total 2</th>
+                    <th>Total 3</th>
+                  </tr>
+                </thead>
+                <tbody id="dailyPreviewBody"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Lançamentos a salvar</h2>
+              <button class="ghost" id="clearDraftBtn" type="button">Limpar pendentes</button>
+            </div>
+            <div class="return-list" id="draftList"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Salvar</h2>
+              <span id="saveSummary">Nenhum lançamento pendente</span>
+            </div>
+            <button id="saveWorkbookBtn" type="button">Salvar na planilha local</button>
+          </article>
+        </section>
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script type="module" src="/fichas-diarias.js"></script>
   </body>
 </html>

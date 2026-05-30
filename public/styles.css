@@ -185,15 +185,61 @@ h3 {
   align-items: start;
 }
 
+.daily-workspace {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.42fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.daily-left,
 .todo-left {
   display: grid;
   gap: 16px;
 }
 
+.daily-form,
 .todo-form {
   display: grid;
   gap: 12px;
   margin-top: 14px;
+}
+
+.daily-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.daily-form button {
+  grid-column: 1 / -1;
+}
+
+.daily-right {
+  display: grid;
+  gap: 16px;
+}
+
+.daily-preview {
+  overflow: auto;
+  margin-top: 14px;
+}
+
+.daily-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.daily-preview th,
+.daily-preview td {
+  border-bottom: 1px solid var(--line);
+  padding: 9px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.daily-preview th:first-child,
+.daily-preview td:first-child {
+  text-align: left;
 }
 
 .progress-panel {
@@ -706,6 +752,7 @@ select:focus {
   .workspace,
   .forms-grid,
   .summary-grid,
+  .daily-workspace,
   .todo-workspace {
     grid-template-columns: 1fr;
   }
@@ -746,6 +793,7 @@ select:focus {
   }
 
   .field-grid,
+  .daily-form,
   .field-grid.groups {
     grid-template-columns: 1fr;
   }
