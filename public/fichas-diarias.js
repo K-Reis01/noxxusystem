@@ -45,6 +45,52 @@ const mainHeaders = [
 
 const valeHeaders = ["DATA", "DISCRIMINAÇÃO", "VALOR", "OBS DIA"];
 
+const excelBorder = {
+  top: { style: "thin", color: { rgb: "666666" } },
+  right: { style: "thin", color: { rgb: "666666" } },
+  bottom: { style: "thin", color: { rgb: "666666" } },
+  left: { style: "thin", color: { rgb: "666666" } },
+};
+
+const excelColors = {
+  white: "FFFFFF",
+  mainGreen: "C6E0B4",
+  mainPeach: "F8CBAD",
+  mainAqua: "CCFFFF",
+  mainYellow: "FFF2CC",
+  valeGreen: "92D050",
+  totalYellow: "FFFF00",
+};
+
+const mainColumnFills = [
+  excelColors.mainAqua,
+  excelColors.mainGreen,
+  excelColors.mainGreen,
+  excelColors.mainPeach,
+  excelColors.mainPeach,
+  excelColors.mainPeach,
+  excelColors.mainPeach,
+  excelColors.mainAqua,
+  excelColors.mainYellow,
+  excelColors.mainPeach,
+  excelColors.mainPeach,
+  excelColors.mainGreen,
+  excelColors.mainPeach,
+  excelColors.mainPeach,
+  excelColors.mainGreen,
+  excelColors.mainPeach,
+];
+
+const valeColumnFills = [
+  excelColors.valeGreen,
+  excelColors.white,
+  excelColors.valeGreen,
+  excelColors.white,
+];
+
+const moneyColumnIndexes = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+const valeMoneyColumnIndexes = new Set([2]);
+
 let workbookHandle = null;
 let workbookFileName = "";
 let workbookPath = "";
@@ -367,28 +413,149 @@ function aoaFromRows(rows) {
   ];
 }
 
-function valesAoaFromRows(rows) {
-  return [
-    valeHeaders,
-    ...rows.map((row) => [displayDate(row.date), row.descricao, row.valor, row.obs]),
-  ];
+function formulaCell(formula, value) {
+  return { t: "n", f: formula, v: rounded(value) };
 }
 
-function appendSheet(workbook, name, rows) {
+function valesSheetData(rows) {
+  const sheetRows = [valeHeaders];
+  const totalRowIndexes = [];
+
+  for (let index = 0; index < rows.length;) {
+    const date = rows[index].date;
+    const firstExcelRow = sheetRows.length + 1;
+    let total = 0;
+
+    while (index < rows.length && rows[index].date === date) {
+      const row = rows[index];
+      total += row.valor;
+      sheetRows.push([displayDate(row.date), row.descricao, row.valor, row.obs]);
+      index += 1;
+    }
+
+    const lastExcelRow = sheetRows.length;
+    totalRowIndexes.push(sheetRows.length);
+    sheetRows.push(["", "", formulaCell(`SUM(C${firstExcelRow}:C${lastExcelRow})`, total), ""]);
+  }
+
+  return { rows: sheetRows, totalRowIndexes };
+}
+
+function cellDisplayValue(cell) {
+  return cell && typeof cell === "object" && "v" in cell ? cell.v : cell;
+}
+
+function applyCellStyle(worksheet, rowIndex, columnIndex, style, numberFormat = "") {
+  const cellRef = window.XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+  worksheet[cellRef] = worksheet[cellRef] || { t: "s", v: "" };
+  const currentStyle = worksheet[cellRef].s || {};
+  worksheet[cellRef].s = {
+    ...currentStyle,
+    ...style,
+    font: { ...(currentStyle.font || {}), ...(style.font || {}) },
+    fill: style.fill || currentStyle.fill,
+    alignment: { ...(currentStyle.alignment || {}), ...(style.alignment || {}) },
+    border: style.border || currentStyle.border,
+  };
+  if (numberFormat) worksheet[cellRef].z = numberFormat;
+}
+
+function columnStyle(fillColor, options = {}) {
+  return {
+    fill: { fgColor: { rgb: fillColor }, patternType: "solid" },
+    font: {
+      bold: Boolean(options.bold),
+      color: { rgb: "000000" },
+    },
+    alignment: {
+      horizontal: options.horizontal || "center",
+      vertical: "center",
+    },
+    border: excelBorder,
+  };
+}
+
+function styleMainSheet(worksheet, rows) {
+  const columnCount = mainHeaders.length;
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    applyCellStyle(
+      worksheet,
+      0,
+      columnIndex,
+      columnStyle(mainColumnFills[columnIndex], { bold: true }),
+    );
+  }
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const isMoney = moneyColumnIndexes.has(columnIndex);
+      applyCellStyle(
+        worksheet,
+        rowIndex,
+        columnIndex,
+        columnStyle(mainColumnFills[columnIndex], { horizontal: isMoney ? "right" : "center" }),
+        isMoney ? "#,##0.00" : "",
+      );
+    }
+  }
+}
+
+function styleValesSheet(worksheet, rows, totalRowIndexes = []) {
+  const columnCount = valeHeaders.length;
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const isHeader = rowIndex === 0;
+      const isMoney = valeMoneyColumnIndexes.has(columnIndex);
+      applyCellStyle(
+        worksheet,
+        rowIndex,
+        columnIndex,
+        columnStyle(valeColumnFills[columnIndex], {
+          bold: isHeader,
+          horizontal: isMoney && !isHeader ? "right" : "center",
+        }),
+        isMoney && !isHeader ? "#,##0.00" : "",
+      );
+    }
+  }
+
+  totalRowIndexes.forEach((rowIndex) => {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      applyCellStyle(
+        worksheet,
+        rowIndex,
+        columnIndex,
+        columnStyle(excelColors.totalYellow, {
+          bold: true,
+          horizontal: columnIndex === 2 ? "right" : "center",
+        }),
+        columnIndex === 2 ? "#,##0.00" : "",
+      );
+    }
+  });
+}
+
+function appendSheet(workbook, name, rows, options = {}) {
   const worksheet = window.XLSX.utils.aoa_to_sheet(rows);
   const columnCount = Math.max(...rows.map((row) => row.length));
   worksheet["!cols"] = Array.from({ length: columnCount }, (_, index) => {
-    const width = Math.max(12, ...rows.map((row) => String(row[index] ?? "").length + 2));
+    const width = Math.max(12, ...rows.map((row) => String(cellDisplayValue(row[index]) ?? "").length + 2));
     return { wch: Math.min(width, 28) };
   });
+  if (options.kind === "main") styleMainSheet(worksheet, rows);
+  if (options.kind === "vales") styleValesSheet(worksheet, rows, options.totalRowIndexes);
   window.XLSX.utils.book_append_sheet(workbook, worksheet, name);
 }
 
 function buildWorkbookBytes(rows = mergedRows()) {
   const workbook = window.XLSX.utils.book_new();
-  appendSheet(workbook, "FICHADIARIAGERAL", aoaFromRows(rows.fichas));
-  appendSheet(workbook, "VALES", valesAoaFromRows(rows.vales));
-  return window.XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const valesSheet = valesSheetData(rows.vales);
+  appendSheet(workbook, "FICHADIARIAGERAL", aoaFromRows(rows.fichas), { kind: "main" });
+  appendSheet(workbook, "VALES", valesSheet.rows, {
+    kind: "vales",
+    totalRowIndexes: valesSheet.totalRowIndexes,
+  });
+  return window.XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
 }
 
 function fileStamp() {
@@ -554,19 +721,16 @@ async function saveWorkbook() {
   const dates = [...new Set([...draft.fichas.map((row) => row.date), ...draft.vales.map((row) => row.date)])]
     .map(displayDate)
     .join(", ");
+  const isUpdating = Boolean(workbookFileName || workbookHandle || existingRows.fichas.length || existingRows.vales.length);
   const targetText = desktopApi
     ? `A planilha será salva em:\n${workbookPath || "pasta padrão do Noxxus System"}`
     : workbookFileName
       ? `A planilha "${workbookFileName}" será alterada.`
       : "Uma nova planilha será criada.";
-  const firstConfirm = window.confirm(
-    `${targetText}\n\nFichas: ${draft.fichas.length}\nVales: ${draft.vales.length}\nDatas afetadas: ${dates}\n\nDeseja continuar?`,
+  const confirmed = window.confirm(
+    `${isUpdating ? "Gostaria de atualizar a planilha?" : "Gostaria de adicionar a planilha?"}\n\n${targetText}\n\nFichas: ${draft.fichas.length}\nVales: ${draft.vales.length}\nDatas afetadas: ${dates}\n\nSe a planilha já existe, um backup será criado antes da alteração.`,
   );
-  if (!firstConfirm) return;
-  const secondConfirm = window.confirm(
-    "Confirma novamente o salvamento? Se a planilha já existir, um backup será criado antes da alteração.",
-  );
-  if (!secondConfirm) return;
+  if (!confirmed) return;
 
   try {
     const rowsToSave = mergedRows();

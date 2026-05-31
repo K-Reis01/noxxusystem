@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, "..");
+const appDisplayName = "Noxxus System 0.2.0";
+
+app.setName(appDisplayName);
 
 const candidateFileNames = [
   "fichas-diarias.xlsx",
@@ -144,7 +147,7 @@ async function createWindow() {
     height: 900,
     minWidth: 1100,
     minHeight: 720,
-    title: "Noxxus System",
+    title: appDisplayName,
     backgroundColor: "#07040c",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
