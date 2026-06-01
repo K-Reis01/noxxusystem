@@ -158,7 +158,7 @@ function toIsoDate(value) {
 
 function calculateTotals(row) {
   const total1 = rounded(row.dinheiro + row.chAv + row.cartao + row.vales);
-  const total2 = rounded(total1 + row.pre + row.vendas + row.receb);
+  const total2 = rounded(total1 + row.pre + row.vendas - row.receb);
   const total3 = rounded(total2 - row.descon + row.juros);
   return { total1, total2, total3 };
 }
@@ -392,24 +392,27 @@ function mergedRows() {
 function aoaFromRows(rows) {
   return [
     mainHeaders,
-    ...rows.map((row) => [
-      displayDate(row.date),
-      row.ecf,
-      row.acerto,
-      row.dinheiro,
-      row.chAv,
-      row.cartao,
-      row.vales,
-      row.total1,
-      row.pre,
-      row.vendas,
-      row.receb,
-      row.total2,
-      row.descon,
-      row.juros,
-      row.total3,
-      row.chPEmi,
-    ]),
+    ...rows.map((row, index) => {
+      const excelRow = index + 2;
+      return [
+        displayDate(row.date),
+        row.ecf,
+        row.acerto,
+        row.dinheiro,
+        row.chAv,
+        row.cartao,
+        row.vales,
+        formulaCell(`D${excelRow}+E${excelRow}+F${excelRow}+G${excelRow}`, row.total1),
+        row.pre,
+        row.vendas,
+        row.receb,
+        formulaCell(`H${excelRow}+I${excelRow}+J${excelRow}-K${excelRow}`, row.total2),
+        row.descon,
+        row.juros,
+        formulaCell(`L${excelRow}-M${excelRow}+N${excelRow}`, row.total3),
+        row.chPEmi,
+      ];
+    }),
   ];
 }
 

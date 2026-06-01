@@ -1,6 +1,6 @@
 {
   "name": "conferencia-caixa",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Sistema desktop para conferência de caixa, tarefas e fichas diárias.",
   "author": "Kauã Reis",
   "private": true,
@@ -26,7 +26,7 @@
   },
   "build": {
     "appId": "br.com.noxxus.system",
-    "productName": "Noxxus System 0.2.0",
+    "productName": "Noxxus System 0.2.1",
     "extraMetadata": {
       "main": "electron/main.mjs"
     },

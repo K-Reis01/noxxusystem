@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, "..");
-const appDisplayName = "Noxxus System 0.2.0";
+const appDisplayName = "Noxxus System 0.2.1";
 
 app.setName(appDisplayName);
 
