@@ -55,6 +55,48 @@ select {
   padding: 12px 0 20px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 24px;
+}
+
+.modal-layer[hidden] {
+  display: none;
+}
+
+.close-cash-card {
+  width: min(1320px, 100%);
+  margin: auto;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.close-cash-summary {
+  margin: 16px 0;
+}
+
+.close-cash-workspace {
+  margin-top: 0;
+}
+
+input[readonly] {
+  border-color: #4a3a5e;
+  background: #120d19;
+  color: #d8c8ec;
+  cursor: not-allowed;
+}
+
 .brand-menu {
   position: relative;
   z-index: 30;
@@ -787,6 +829,25 @@ select:focus {
 
 .return-row {
   grid-template-columns: 92px 1fr 130px;
+}
+
+.draft-row {
+  grid-template-columns: 92px 1fr 130px 170px;
+}
+
+.draft-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.draft-actions button {
+  padding: 7px 9px;
+}
+
+.draft-actions .danger {
+  border-color: #9c2440;
+  background: var(--bad);
 }
 
 .manual-return-row {

@@ -60,7 +60,7 @@
               <label>Descon. <input data-money-field id="dailyDescon" type="text" inputmode="decimal" placeholder="0,00" /></label>
               <label>Juros <input data-money-field id="dailyJuros" type="text" inputmode="decimal" placeholder="0,00" /></label>
               <label>CH P/ EMI <input data-money-field id="dailyChPEmi" type="text" inputmode="decimal" placeholder="0,00" /></label>
-              <button type="submit">Adicionar ficha</button>
+              <button id="dailySubmitBtn" type="submit">Adicionar ficha</button>
             </form>
           </article>
 
@@ -71,7 +71,7 @@
               <label class="wide-field">Discriminação <input id="valeDescricao" type="text" autocomplete="off" required /></label>
               <label>Valor <input id="valeValor" type="text" inputmode="decimal" placeholder="0,00" required /></label>
               <label>Obs. dia <input id="valeObs" type="text" autocomplete="off" /></label>
-              <button type="submit">Adicionar vale</button>
+              <button id="valeSubmitBtn" type="submit">Adicionar vale</button>
             </form>
           </article>
         </aside>
@@ -80,7 +80,10 @@
           <article class="panel">
             <div class="panel-head">
               <h2>Prévia da planilha</h2>
-              <button class="ghost" id="refreshWorkbookBtn" type="button">Buscar planilha</button>
+              <div class="actions">
+                <button class="ghost" id="chooseWorkbookFolderBtn" type="button">Escolher pasta</button>
+                <button class="ghost" id="refreshWorkbookBtn" type="button">Buscar planilha</button>
+              </div>
               <input id="workbookFileInput" class="sr-only-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
             </div>
             <p class="empty-state" id="workbookPath">O app buscará a planilha automaticamente nos arquivos.</p>

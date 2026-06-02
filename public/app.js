@@ -16,6 +16,86 @@ const state = {
   step: "tickets",
 };
 
+const EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const desktopApi = window.noxxusDesktop || null;
+
+const closeCashState = {
+  existingRows: { fichas: [], vales: [] },
+  draft: { fichas: [], vales: [] },
+  editing: null,
+  workbookPath: "",
+  workbookFileName: "",
+  workbookBaseDirectory: "",
+  askDirectoryEverySave: false,
+};
+
+const closeMainHeaders = [
+  "DATA",
+  "ECF",
+  "ACERTO",
+  "DINHEIRO",
+  "CH AV",
+  "CARTÃO",
+  "VALES",
+  "TOTAL1",
+  "PRÉ",
+  "VENDAS",
+  "RECEB",
+  "TOTAL2",
+  "DESCON",
+  "JUROS",
+  "TOTAL3",
+  "CH P/ EMI",
+];
+
+const closeValeHeaders = ["DATA", "DISCRIMINAÇÃO", "VALOR", "OBS DIA"];
+
+const closeExcelBorder = {
+  top: { style: "thin", color: { rgb: "666666" } },
+  right: { style: "thin", color: { rgb: "666666" } },
+  bottom: { style: "thin", color: { rgb: "666666" } },
+  left: { style: "thin", color: { rgb: "666666" } },
+};
+
+const closeExcelColors = {
+  white: "FFFFFF",
+  mainGreen: "C6E0B4",
+  mainPeach: "F8CBAD",
+  mainAqua: "CCFFFF",
+  mainYellow: "FFF2CC",
+  valeGreen: "92D050",
+  totalYellow: "FFFF00",
+};
+
+const closeMainColumnFills = [
+  closeExcelColors.mainAqua,
+  closeExcelColors.mainGreen,
+  closeExcelColors.mainGreen,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainAqua,
+  closeExcelColors.mainYellow,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainGreen,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainPeach,
+  closeExcelColors.mainGreen,
+  closeExcelColors.mainPeach,
+];
+
+const closeValeColumnFills = [
+  closeExcelColors.valeGreen,
+  closeExcelColors.white,
+  closeExcelColors.valeGreen,
+  closeExcelColors.white,
+];
+
+const closeMoneyColumnIndexes = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+const closeValeMoneyColumnIndexes = new Set([2]);
+
 const RETURN_TYPES = {
   baixa_conta: "A) Baixa na conta",
   sem_entrada: "B) Devolução sem entrada",
@@ -66,6 +146,144 @@ function cleanText(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function closeNormalizeText(value) {
+  return cleanText(value);
+}
+
+function currentIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function displayDate(isoDate) {
+  if (!isoDate) return "";
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function excelSerialToIso(value) {
+  const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+function toIsoDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  if (typeof value === "number" && value > 1000) return excelSerialToIso(value);
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return text;
+  const br = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (!br) return "";
+  const year = br[3].length === 2 ? `20${br[3]}` : br[3];
+  return `${year}-${br[2].padStart(2, "0")}-${br[1].padStart(2, "0")}`;
+}
+
+function amountInputValue(value) {
+  return Number(value || 0) ? String(rounded(value)).replace(".", ",") : "";
+}
+
+function setCloseMoneyInput(selector, value) {
+  document.querySelector(selector).value = amountInputValue(value);
+}
+
+function draftId(type) {
+  return `${type}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function closeCalculateTotals(row) {
+  const total1 = rounded(row.dinheiro + row.chAv + row.cartao + row.vales);
+  const total2 = rounded(total1 + row.pre + row.vendas - row.receb);
+  const total3 = rounded(total2 - row.descon + row.juros);
+  return { total1, total2, total3 };
+}
+
+function closeSheetRows(workbook, expectedName) {
+  const sheetName = workbook.SheetNames.find((name) => closeNormalizeText(name) === closeNormalizeText(expectedName));
+  if (!sheetName) return [];
+  return window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+    header: 1,
+    defval: "",
+    raw: true,
+  });
+}
+
+function closeFindHeaderRow(rows, requiredHeaders) {
+  return rows.findIndex((row) => {
+    const labels = row.map(closeNormalizeText);
+    return requiredHeaders.every((header) => labels.includes(closeNormalizeText(header)));
+  });
+}
+
+function closeColumnMap(headerRow) {
+  const map = new Map();
+  headerRow.forEach((cell, index) => map.set(closeNormalizeText(cell), index));
+  return map;
+}
+
+function closeValueAt(row, map, label) {
+  return row[map.get(closeNormalizeText(label))] ?? "";
+}
+
+function closeParseMainRows(rows) {
+  const headerIndex = closeFindHeaderRow(rows, ["DATA", "DINHEIRO", "TOTAL1"]);
+  if (headerIndex === -1) return [];
+  const map = closeColumnMap(rows[headerIndex]);
+  return rows.slice(headerIndex + 1)
+    .map((row) => {
+      const date = toIsoDate(closeValueAt(row, map, "DATA"));
+      if (!date) return null;
+      const base = {
+        date,
+        ecf: String(closeValueAt(row, map, "ECF") || ""),
+        acerto: parseAmount(closeValueAt(row, map, "ACERTO")),
+        dinheiro: parseAmount(closeValueAt(row, map, "DINHEIRO")),
+        chAv: parseAmount(closeValueAt(row, map, "CH AV")),
+        cartao: parseAmount(closeValueAt(row, map, "CARTÃO")),
+        vales: parseAmount(closeValueAt(row, map, "VALES")),
+        pre: parseAmount(closeValueAt(row, map, "PRÉ")),
+        vendas: parseAmount(closeValueAt(row, map, "VENDAS")),
+        receb: parseAmount(closeValueAt(row, map, "RECEB")),
+        descon: parseAmount(closeValueAt(row, map, "DESCON")),
+        juros: parseAmount(closeValueAt(row, map, "JUROS")),
+        chPEmi: parseAmount(closeValueAt(row, map, "CH P/ EMI")),
+      };
+      return { ...base, ...closeCalculateTotals(base) };
+    })
+    .filter(Boolean);
+}
+
+function closeParseValeRows(rows) {
+  const headerIndex = closeFindHeaderRow(rows, ["DATA", "DISCRIMINAÇÃO", "VALOR"]);
+  if (headerIndex === -1) return [];
+  const map = closeColumnMap(rows[headerIndex]);
+  return rows.slice(headerIndex + 1)
+    .map((row) => {
+      const date = toIsoDate(closeValueAt(row, map, "DATA"));
+      if (!date) return null;
+      return {
+        id: draftId("existing-vale"),
+        date,
+        descricao: String(closeValueAt(row, map, "DISCRIMINAÇÃO") || ""),
+        valor: parseAmount(closeValueAt(row, map, "VALOR")),
+        obs: String(closeValueAt(row, map, "OBS DIA") || ""),
+      };
+    })
+    .filter(Boolean);
+}
+
+function closeParseWorkbook(buffer) {
+  if (!window.XLSX) throw new Error("Leitor de Excel não carregou.");
+  const workbook = window.XLSX.read(buffer, { type: "array", raw: true, cellDates: false });
+  return {
+    fichas: closeParseMainRows(closeSheetRows(workbook, "FICHADIARIAGERAL")),
+    vales: closeParseValeRows(closeSheetRows(workbook, "VALES")),
+  };
 }
 
 function ticketItems() {
@@ -522,6 +740,178 @@ function appendSheet(workbook, name, rows) {
   window.XLSX.utils.book_append_sheet(workbook, worksheet, name.slice(0, 31));
 }
 
+function closeFormulaCell(formula, value) {
+  return { t: "n", f: formula, v: rounded(value) };
+}
+
+function closeAoaFromRows(rows) {
+  return [
+    closeMainHeaders,
+    ...rows.map((row, index) => {
+      const excelRow = index + 2;
+      return [
+        displayDate(row.date),
+        row.ecf,
+        row.acerto,
+        row.dinheiro,
+        row.chAv,
+        row.cartao,
+        row.vales,
+        closeFormulaCell(`D${excelRow}+E${excelRow}+F${excelRow}+G${excelRow}`, row.total1),
+        row.pre,
+        row.vendas,
+        row.receb,
+        closeFormulaCell(`H${excelRow}+I${excelRow}+J${excelRow}-K${excelRow}`, row.total2),
+        row.descon,
+        row.juros,
+        closeFormulaCell(`L${excelRow}-M${excelRow}+N${excelRow}`, row.total3),
+        row.chPEmi,
+      ];
+    }),
+  ];
+}
+
+function closeValesSheetData(rows) {
+  const sheetRows = [closeValeHeaders];
+  const totalRowIndexes = [];
+
+  for (let index = 0; index < rows.length;) {
+    const date = rows[index].date;
+    const firstExcelRow = sheetRows.length + 1;
+    let total = 0;
+
+    while (index < rows.length && rows[index].date === date) {
+      const row = rows[index];
+      total += row.valor;
+      sheetRows.push([displayDate(row.date), row.descricao, row.valor, row.obs]);
+      index += 1;
+    }
+
+    const lastExcelRow = sheetRows.length;
+    totalRowIndexes.push(sheetRows.length);
+    sheetRows.push(["", "", closeFormulaCell(`SUM(C${firstExcelRow}:C${lastExcelRow})`, total), ""]);
+  }
+
+  return { rows: sheetRows, totalRowIndexes };
+}
+
+function closeCellDisplayValue(cell) {
+  return cell && typeof cell === "object" && "v" in cell ? cell.v : cell;
+}
+
+function closeApplyCellStyle(worksheet, rowIndex, columnIndex, style, numberFormat = "") {
+  const cellRef = window.XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+  worksheet[cellRef] = worksheet[cellRef] || { t: "s", v: "" };
+  const currentStyle = worksheet[cellRef].s || {};
+  worksheet[cellRef].s = {
+    ...currentStyle,
+    ...style,
+    font: { ...(currentStyle.font || {}), ...(style.font || {}) },
+    fill: style.fill || currentStyle.fill,
+    alignment: { ...(currentStyle.alignment || {}), ...(style.alignment || {}) },
+    border: style.border || currentStyle.border,
+  };
+  if (numberFormat) worksheet[cellRef].z = numberFormat;
+}
+
+function closeColumnStyle(fillColor, options = {}) {
+  return {
+    fill: { fgColor: { rgb: fillColor }, patternType: "solid" },
+    font: {
+      bold: Boolean(options.bold),
+      color: { rgb: "000000" },
+    },
+    alignment: {
+      horizontal: options.horizontal || "center",
+      vertical: "center",
+    },
+    border: closeExcelBorder,
+  };
+}
+
+function closeStyleMainSheet(worksheet, rows) {
+  const columnCount = closeMainHeaders.length;
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    closeApplyCellStyle(
+      worksheet,
+      0,
+      columnIndex,
+      closeColumnStyle(closeMainColumnFills[columnIndex], { bold: true }),
+    );
+  }
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const isMoney = closeMoneyColumnIndexes.has(columnIndex);
+      closeApplyCellStyle(
+        worksheet,
+        rowIndex,
+        columnIndex,
+        closeColumnStyle(closeMainColumnFills[columnIndex], { horizontal: isMoney ? "right" : "center" }),
+        isMoney ? "#,##0.00" : "",
+      );
+    }
+  }
+}
+
+function closeStyleValesSheet(worksheet, rows, totalRowIndexes = []) {
+  const columnCount = closeValeHeaders.length;
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const isHeader = rowIndex === 0;
+      const isMoney = closeValeMoneyColumnIndexes.has(columnIndex);
+      closeApplyCellStyle(
+        worksheet,
+        rowIndex,
+        columnIndex,
+        closeColumnStyle(closeValeColumnFills[columnIndex], {
+          bold: isHeader,
+          horizontal: isMoney && !isHeader ? "right" : "center",
+        }),
+        isMoney && !isHeader ? "#,##0.00" : "",
+      );
+    }
+  }
+
+  totalRowIndexes.forEach((rowIndex) => {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      closeApplyCellStyle(
+        worksheet,
+        rowIndex,
+        columnIndex,
+        closeColumnStyle(closeExcelColors.totalYellow, {
+          bold: true,
+          horizontal: columnIndex === 2 ? "right" : "center",
+        }),
+        columnIndex === 2 ? "#,##0.00" : "",
+      );
+    }
+  });
+}
+
+function closeAppendWorkbookSheet(workbook, name, rows, options = {}) {
+  const worksheet = window.XLSX.utils.aoa_to_sheet(rows);
+  const columnCount = Math.max(...rows.map((row) => row.length));
+  worksheet["!cols"] = Array.from({ length: columnCount }, (_, index) => {
+    const width = Math.max(12, ...rows.map((row) => String(closeCellDisplayValue(row[index]) ?? "").length + 2));
+    return { wch: Math.min(width, 28) };
+  });
+  if (options.kind === "main") closeStyleMainSheet(worksheet, rows);
+  if (options.kind === "vales") closeStyleValesSheet(worksheet, rows, options.totalRowIndexes);
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, name);
+}
+
+function closeBuildWorkbookBytes(rows) {
+  const workbook = window.XLSX.utils.book_new();
+  const valesSheet = closeValesSheetData(rows.vales);
+  closeAppendWorkbookSheet(workbook, "FICHADIARIAGERAL", closeAoaFromRows(rows.fichas), { kind: "main" });
+  closeAppendWorkbookSheet(workbook, "VALES", valesSheet.rows, {
+    kind: "vales",
+    totalRowIndexes: valesSheet.totalRowIndexes,
+  });
+  return window.XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
+}
+
 function paymentColumns(item) {
   return [
     item.payments.dinheiro,
@@ -856,6 +1246,358 @@ function addReturnEntry() {
   renderChecks();
 }
 
+function closeCashTotals() {
+  const totals = state.system?.totals || {};
+  return {
+    dinheiro: rounded(totals.dinheiro || 0),
+    chAv: rounded(totals.cheques || 0),
+    cartao: rounded((totals.cartaoDebito || 0) + (totals.cartaoCredito || 0)),
+  };
+}
+
+function closeApplyWorkbookStatus(status) {
+  closeCashState.workbookPath = status.path || "";
+  closeCashState.workbookFileName = status.exists ? status.fileName : "";
+  closeCashState.workbookBaseDirectory = status.baseDirectory || "";
+  closeCashState.askDirectoryEverySave = Boolean(status.askDirectoryEverySave);
+  document.querySelector("#closeWorkbookPath").textContent = closeCashState.workbookPath
+    ? closeCashState.workbookPath
+    : "O app buscará a planilha automaticamente nos arquivos.";
+}
+
+async function closeRefreshDesktopWorkbook() {
+  if (!desktopApi?.readDailyWorkbook) {
+    closeCashState.existingRows = { fichas: [], vales: [] };
+    document.querySelector("#closeWorkbookPath").textContent =
+      "Salvamento automático disponível apenas no aplicativo instalado.";
+    return;
+  }
+
+  const payload = await desktopApi.readDailyWorkbook();
+  closeApplyWorkbookStatus(payload);
+  if (payload.exists && payload.bytes?.length) {
+    const bytes = new Uint8Array(payload.bytes);
+    closeCashState.existingRows = closeParseWorkbook(bytes.buffer);
+  } else {
+    closeCashState.existingRows = { fichas: [], vales: [] };
+  }
+}
+
+async function closeChooseWorkbookFolder() {
+  if (!desktopApi?.chooseDailyWorkbookDirectory) {
+    window.alert("A escolha de pasta está disponível apenas no aplicativo instalado.");
+    return;
+  }
+
+  try {
+    const payload = await desktopApi.chooseDailyWorkbookDirectory();
+    if (payload.canceled) return;
+    closeApplyWorkbookStatus(payload);
+    await closeRefreshDesktopWorkbook();
+    closeRender();
+  } catch (error) {
+    window.alert(`Não consegui configurar a pasta.\n${error.message || error}`);
+  }
+}
+
+function closeMergedRows() {
+  const draftDates = new Set(closeCashState.draft.fichas.map((row) => row.date));
+  const fichas = [
+    ...closeCashState.existingRows.fichas.filter((row) => !draftDates.has(row.date)),
+    ...closeCashState.draft.fichas,
+  ].sort((left, right) => left.date.localeCompare(right.date));
+
+  const vales = [
+    ...closeCashState.existingRows.vales,
+    ...closeCashState.draft.vales,
+  ].sort((left, right) => left.date.localeCompare(right.date));
+
+  return { fichas, vales };
+}
+
+function readCloseDailyForm() {
+  const base = {
+    date: document.querySelector("#closeDailyDate").value,
+    ecf: document.querySelector("#closeDailyEcf").value.trim(),
+    acerto: parseAmount(document.querySelector("#closeDailyAcerto").value),
+    dinheiro: parseAmount(document.querySelector("#closeDailyDinheiro").value),
+    chAv: parseAmount(document.querySelector("#closeDailyChAv").value),
+    cartao: parseAmount(document.querySelector("#closeDailyCartao").value),
+    vales: parseAmount(document.querySelector("#closeDailyVales").value),
+    pre: parseAmount(document.querySelector("#closeDailyPre").value),
+    vendas: parseAmount(document.querySelector("#closeDailyVendas").value),
+    receb: parseAmount(document.querySelector("#closeDailyReceb").value),
+    descon: parseAmount(document.querySelector("#closeDailyDescon").value),
+    juros: parseAmount(document.querySelector("#closeDailyJuros").value),
+    chPEmi: parseAmount(document.querySelector("#closeDailyChPEmi").value),
+  };
+  return { ...base, ...closeCalculateTotals(base) };
+}
+
+function fillCloseDailyForm(row) {
+  document.querySelector("#closeDailyDate").value = row.date || currentIsoDate();
+  document.querySelector("#closeDailyEcf").value = row.ecf || "";
+  setCloseMoneyInput("#closeDailyAcerto", row.acerto);
+  setCloseMoneyInput("#closeDailyDinheiro", row.dinheiro);
+  setCloseMoneyInput("#closeDailyChAv", row.chAv);
+  setCloseMoneyInput("#closeDailyCartao", row.cartao);
+  setCloseMoneyInput("#closeDailyVales", row.vales);
+  setCloseMoneyInput("#closeDailyPre", row.pre);
+  setCloseMoneyInput("#closeDailyVendas", row.vendas);
+  setCloseMoneyInput("#closeDailyReceb", row.receb);
+  setCloseMoneyInput("#closeDailyDescon", row.descon);
+  setCloseMoneyInput("#closeDailyJuros", row.juros);
+  setCloseMoneyInput("#closeDailyChPEmi", row.chPEmi);
+  updateCloseDailyTotalPreview();
+}
+
+function fillCloseValeForm(row) {
+  document.querySelector("#closeValeDate").value = row.date || currentIsoDate();
+  document.querySelector("#closeValeDescricao").value = row.descricao || "";
+  setCloseMoneyInput("#closeValeValor", row.valor);
+  document.querySelector("#closeValeObs").value = row.obs || "";
+}
+
+function resetCloseAutomaticFields() {
+  const today = currentIsoDate();
+  const totals = closeCashTotals();
+  document.querySelector("#closeDailyDate").value = today;
+  document.querySelector("#closeValeDate").value = today;
+  document.querySelector("#closeCashDateLabel").textContent = displayDate(today);
+  setCloseMoneyInput("#closeDailyDinheiro", totals.dinheiro);
+  setCloseMoneyInput("#closeDailyChAv", totals.chAv);
+  setCloseMoneyInput("#closeDailyCartao", totals.cartao);
+  updateCloseDailyTotalPreview();
+}
+
+function updateCloseDailyTotalPreview() {
+  const row = readCloseDailyForm();
+  document.querySelector("#closeDailyTotalPreview").textContent =
+    `Total 1: ${money.format(row.total1)} | Total 2: ${money.format(row.total2)} | Total 3: ${money.format(row.total3)}`;
+}
+
+function updateCloseSubmitButtons() {
+  document.querySelector("#closeDailySubmitBtn").textContent =
+    closeCashState.editing?.type === "ficha" ? "Atualizar ficha" : "Adicionar ficha";
+  document.querySelector("#closeValeSubmitBtn").textContent =
+    closeCashState.editing?.type === "vale" ? "Atualizar vale" : "Adicionar vale";
+}
+
+function addOrReplaceCloseDraftFicha(row) {
+  const editingDate = closeCashState.editing?.type === "ficha" ? closeCashState.editing.id : "";
+  closeCashState.draft.fichas = closeCashState.draft.fichas
+    .filter((item) => item.date !== row.date && item.date !== editingDate);
+  closeCashState.draft.fichas.push(row);
+  closeCashState.editing = null;
+}
+
+function editCloseDraftEntry(type, id) {
+  if (type === "ficha") {
+    const row = closeCashState.draft.fichas.find((item) => item.date === id);
+    if (!row) return;
+    closeCashState.editing = { type, id };
+    fillCloseDailyForm(row);
+    document.querySelector("#closeDailyEcf").focus();
+  } else {
+    const row = closeCashState.draft.vales.find((item) => item.id === id);
+    if (!row) return;
+    closeCashState.editing = { type, id };
+    fillCloseValeForm(row);
+    document.querySelector("#closeValeDescricao").focus();
+  }
+  updateCloseSubmitButtons();
+}
+
+function removeCloseDraftEntry(type, id) {
+  if (!window.confirm("Remover este lançamento pendente?")) return;
+  if (type === "ficha") {
+    closeCashState.draft.fichas = closeCashState.draft.fichas.filter((item) => item.date !== id);
+  } else {
+    closeCashState.draft.vales = closeCashState.draft.vales.filter((item) => item.id !== id);
+  }
+  if (closeCashState.editing?.type === type && closeCashState.editing.id === id) {
+    closeCashState.editing = null;
+  }
+  closeRender();
+}
+
+function closeClearForm(form, preserveSelector = "") {
+  const preserved = preserveSelector ? document.querySelector(preserveSelector).value : "";
+  form.reset();
+  if (preserveSelector) document.querySelector(preserveSelector).value = preserved;
+  resetCloseAutomaticFields();
+}
+
+function closeRenderPreview() {
+  const rows = closeMergedRows().fichas;
+  const body = document.querySelector("#closeDailyPreviewBody");
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="8">Nenhuma ficha registrada.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows.slice(-5).map((row) => `<tr>
+    <td>${displayDate(row.date)}</td>
+    <td>${money.format(row.acerto)}</td>
+    <td>${money.format(row.dinheiro)}</td>
+    <td>${money.format(row.chAv)}</td>
+    <td>${money.format(row.cartao)}</td>
+    <td>${money.format(row.total1)}</td>
+    <td>${money.format(row.total2)}</td>
+    <td>${money.format(row.total3)}</td>
+  </tr>`).join("");
+}
+
+function closeRenderDrafts() {
+  const list = document.querySelector("#closeDraftList");
+  const total = closeCashState.draft.fichas.length + closeCashState.draft.vales.length;
+  document.querySelector("#closeCashFichaCount").textContent = String(closeCashState.draft.fichas.length);
+  document.querySelector("#closeCashValeCount").textContent = String(closeCashState.draft.vales.length);
+  document.querySelector("#closeSaveSummary").textContent = total
+    ? `${closeCashState.draft.fichas.length} fichas e ${closeCashState.draft.vales.length} vales pendentes`
+    : "Nenhum lançamento pendente";
+
+  if (!total) {
+    list.innerHTML = `<p class="empty-state">Nenhum lançamento pendente.</p>`;
+    return;
+  }
+
+  const dailyRows = closeCashState.draft.fichas.map((row) => `<div class="return-row">
+    <strong>${displayDate(row.date)}</strong>
+    <span>Ficha diária - Total 1 ${money.format(row.total1)}</span>
+    <strong>${money.format(row.total3)}</strong>
+  </div>`);
+  const valeRows = closeCashState.draft.vales.map((row) => `<div class="return-row">
+    <strong>${displayDate(row.date)}</strong>
+    <span>Vale - ${row.descricao}</span>
+    <strong>${money.format(row.valor)}</strong>
+  </div>`);
+
+  list.innerHTML = [...dailyRows, ...valeRows].join("");
+  list.querySelectorAll(".return-row").forEach((rowElement, index) => {
+    const isFicha = index < closeCashState.draft.fichas.length;
+    const type = isFicha ? "ficha" : "vale";
+    const entry = isFicha
+      ? closeCashState.draft.fichas[index]
+      : closeCashState.draft.vales[index - closeCashState.draft.fichas.length];
+    const id = isFicha ? entry.date : entry.id;
+    rowElement.classList.add("draft-row");
+    rowElement.insertAdjacentHTML("beforeend", `
+      <div class="draft-actions">
+        <button class="ghost" data-close-edit-type="${type}" data-close-edit-id="${id}" type="button">Editar</button>
+        <button class="danger" data-close-remove-type="${type}" data-close-remove-id="${id}" type="button">Remover</button>
+      </div>
+    `);
+  });
+
+  document.querySelectorAll("[data-close-edit-type]").forEach((button) => {
+    button.addEventListener("click", () => editCloseDraftEntry(button.dataset.closeEditType, button.dataset.closeEditId));
+  });
+  document.querySelectorAll("[data-close-remove-type]").forEach((button) => {
+    button.addEventListener("click", () => removeCloseDraftEntry(button.dataset.closeRemoveType, button.dataset.closeRemoveId));
+  });
+}
+
+function closeRender() {
+  closeRenderPreview();
+  closeRenderDrafts();
+  updateCloseDailyTotalPreview();
+  updateCloseSubmitButtons();
+}
+
+function closeDownloadBytes(bytes, fileName) {
+  const blob = new Blob([bytes], { type: EXCEL_MIME });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function closeWriteWorkbook(bytes) {
+  if (desktopApi?.saveDailyWorkbook) {
+    const response = await desktopApi.saveDailyWorkbook(Array.from(new Uint8Array(bytes)));
+    closeApplyWorkbookStatus(response);
+    return { mode: "desktop", ...response };
+  }
+
+  closeDownloadBytes(bytes, "fichas-diarias.xlsx");
+  return { mode: "download" };
+}
+
+async function saveCloseCashWorkbook() {
+  const total = closeCashState.draft.fichas.length + closeCashState.draft.vales.length;
+  if (!total) {
+    window.alert("Não há lançamentos pendentes para salvar.");
+    return;
+  }
+
+  const dates = [...new Set([
+    ...closeCashState.draft.fichas.map((row) => row.date),
+    ...closeCashState.draft.vales.map((row) => row.date),
+  ])].map(displayDate).join(", ");
+  const isUpdating = Boolean(
+    closeCashState.workbookFileName ||
+    closeCashState.existingRows.fichas.length ||
+    closeCashState.existingRows.vales.length,
+  );
+  const targetText = desktopApi
+    ? closeCashState.askDirectoryEverySave
+      ? `O app pedirá a pasta antes de salvar.\nPasta atual:\n${closeCashState.workbookBaseDirectory || closeCashState.workbookPath || "não definida"}`
+      : `A planilha será salva em:\n${closeCashState.workbookPath || closeCashState.workbookBaseDirectory || "pasta padrão do Noxxus System"}`
+    : "Uma planilha será baixada pelo navegador.";
+  const confirmed = window.confirm(
+    `${isUpdating ? "Gostaria de atualizar a planilha?" : "Gostaria de adicionar a planilha?"}\n\n${targetText}\n\nFichas: ${closeCashState.draft.fichas.length}\nVales: ${closeCashState.draft.vales.length}\nDatas afetadas: ${dates}\n\nSe a planilha já existe, um backup será criado antes da alteração.`,
+  );
+  if (!confirmed) return;
+
+  try {
+    const rowsToSave = closeMergedRows();
+    const bytes = closeBuildWorkbookBytes(rowsToSave);
+    const result = await closeWriteWorkbook(bytes);
+    closeCashState.existingRows = rowsToSave;
+    closeCashState.draft = { fichas: [], vales: [] };
+    closeCashState.editing = null;
+    const backupText = result.backupPath ? `\nBackup criado em:\n${result.backupPath}` : "";
+    window.alert(
+      result.mode === "download"
+        ? "Planilha gerada e baixada."
+        : `Planilha salva com sucesso em:\n${result.path || closeCashState.workbookFileName}${backupText}`,
+    );
+    closeRender();
+  } catch (error) {
+    if (error.message !== "Escolha de pasta cancelada.") {
+      window.alert(`Não consegui salvar a planilha.\n${error.message || error}`);
+    }
+  }
+}
+
+async function openCloseCashModal() {
+  if (!state.system?.totals) {
+    window.alert("Importe o arquivo CX antes de fechar o caixa.");
+    return;
+  }
+
+  const modal = document.querySelector("#closeCashModal");
+  modal.hidden = false;
+  resetCloseAutomaticFields();
+
+  try {
+    await closeRefreshDesktopWorkbook();
+  } catch (error) {
+    document.querySelector("#closeWorkbookPath").textContent = error.message || String(error);
+  }
+
+  closeRender();
+}
+
+function closeCloseCashModal() {
+  document.querySelector("#closeCashModal").hidden = true;
+}
+
 function closeBrandToolbar() {
   const button = document.querySelector("#brandMenuButton");
   const toolbar = document.querySelector("#brandToolbar");
@@ -884,6 +1626,37 @@ function render() {
   renderNeutralized();
   renderManualReturns();
   renderChecks();
+}
+
+function resetConference() {
+  if (!window.confirm("Limpar tudo, inclusive o arquivo CX carregado?")) return;
+  state.system = null;
+  state.transactions = [];
+  state.statuses = {};
+  state.currentIndex = 0;
+  state.adjustments = {};
+  state.returnEntries = [];
+  state.notes = {};
+  document.querySelector("#cxFile").value = "";
+  document.querySelector("#fileName").textContent = "Nenhum arquivo";
+  document.querySelector("#importError").hidden = true;
+  document.querySelector("#importError").textContent = "";
+  document.querySelectorAll("[data-adjustment]").forEach((input) => {
+    input.value = "";
+  });
+  document.querySelectorAll("[data-note]").forEach((input) => {
+    input.value = "";
+  });
+  document.querySelector("#returnType").value = "baixa_conta";
+  document.querySelector("#returnSaleMode").value = "total_nota";
+  document.querySelector("#returnAmount").value = "";
+  document.querySelector("#returnSaleValue").value = "";
+  document.querySelector("#returnNote").value = "";
+  toggleReturnSaleFields();
+  setStep("tickets");
+  closeCashState.draft = { fichas: [], vales: [] };
+  closeCashState.editing = null;
+  render();
 }
 
 async function parseCx(file) {
@@ -923,6 +1696,8 @@ document.querySelector("#cxFile").addEventListener("change", async (event) => {
     state.transactions = state.system.transactions || [];
     state.statuses = {};
     state.currentIndex = 0;
+    closeCashState.draft = { fichas: [], vales: [] };
+    closeCashState.editing = null;
     setStep("tickets");
     render();
   } catch (error) {
@@ -946,6 +1721,55 @@ document.querySelector("#previousTicket").addEventListener("click", () => {
 
 document.querySelector("#nextPending").addEventListener("click", goNextPending);
 document.querySelector("#finishAdjustments").addEventListener("click", () => setStep("result"));
+document.querySelector("#closeCashBtn").addEventListener("click", openCloseCashModal);
+document.querySelector("#closeCashModalBtn").addEventListener("click", closeCloseCashModal);
+document.querySelector("#closeRefreshWorkbookBtn").addEventListener("click", async () => {
+  try {
+    await closeRefreshDesktopWorkbook();
+    closeRender();
+  } catch (error) {
+    window.alert(`Não consegui atualizar a planilha.\n${error.message || error}`);
+  }
+});
+document.querySelector("#closeChooseWorkbookFolderBtn").addEventListener("click", closeChooseWorkbookFolder);
+document.querySelector("#closeSaveWorkbookBtn").addEventListener("click", saveCloseCashWorkbook);
+document.querySelector("#closeClearDraftBtn").addEventListener("click", () => {
+  if (!window.confirm("Limpar todos os lançamentos pendentes?")) return;
+  closeCashState.draft = { fichas: [], vales: [] };
+  closeCashState.editing = null;
+  closeRender();
+});
+document.querySelector("#closeDailyForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const row = readCloseDailyForm();
+  addOrReplaceCloseDraftFicha(row);
+  closeClearForm(event.target, "#closeDailyDate");
+  closeRender();
+});
+document.querySelector("#closeValeForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const row = {
+    id: closeCashState.editing?.type === "vale" ? closeCashState.editing.id : draftId("vale"),
+    date: document.querySelector("#closeValeDate").value,
+    descricao: document.querySelector("#closeValeDescricao").value.trim(),
+    valor: parseAmount(document.querySelector("#closeValeValor").value),
+    obs: document.querySelector("#closeValeObs").value.trim(),
+  };
+
+  if (closeCashState.editing?.type === "vale") {
+    closeCashState.draft.vales = closeCashState.draft.vales
+      .map((item) => (item.id === closeCashState.editing.id ? row : item));
+    closeCashState.editing = null;
+  } else {
+    closeCashState.draft.vales.push(row);
+  }
+
+  closeClearForm(event.target, "#closeValeDate");
+  closeRender();
+});
+document.querySelectorAll("[data-close-money-field]").forEach((input) => {
+  input.addEventListener("input", updateCloseDailyTotalPreview);
+});
 document.querySelector("#exportReportBtn").addEventListener("click", exportReport);
 document.querySelector("#returnType").addEventListener("change", toggleReturnSaleFields);
 document.querySelector("#addReturnEntry").addEventListener("click", addReturnEntry);
@@ -973,27 +1797,13 @@ document.querySelectorAll("[data-note]").forEach((input) => {
   });
 });
 
-document.querySelector("#clearBtn").addEventListener("click", () => {
-  state.statuses = {};
-  state.adjustments = {};
-  state.returnEntries = [];
-  state.notes = {};
-  document.querySelectorAll("[data-adjustment]").forEach((input) => {
-    input.value = "";
-  });
-  document.querySelectorAll("[data-note]").forEach((input) => {
-    input.value = "";
-  });
-  document.querySelector("#returnType").value = "baixa_conta";
-  document.querySelector("#returnSaleMode").value = "total_nota";
-  document.querySelector("#returnAmount").value = "";
-  document.querySelector("#returnSaleValue").value = "";
-  document.querySelector("#returnNote").value = "";
-  toggleReturnSaleFields();
-  state.currentIndex = 0;
-  setStep("tickets");
-  render();
-});
+document.querySelector("#clearAllBtn").addEventListener("click", resetConference);
+document.querySelector("#clearBtn").addEventListener("click", resetConference);
+
+if (!desktopApi) {
+  document.querySelector("#closeChooseWorkbookFolderBtn").disabled = true;
+  document.querySelector("#closeChooseWorkbookFolderBtn").title = "Disponível apenas no aplicativo instalado";
+}
 
 toggleReturnSaleFields();
 setStep("tickets");

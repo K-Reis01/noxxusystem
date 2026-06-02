@@ -94,15 +94,31 @@ const valeMoneyColumnIndexes = new Set([2]);
 let workbookHandle = null;
 let workbookFileName = "";
 let workbookPath = "";
+let workbookBaseDirectory = "";
+let askDirectoryEverySave = false;
 let existingRows = { fichas: [], vales: [] };
 let draft = loadDraft();
+let editingDraft = null;
 
 function loadDraft() {
   try {
-    return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{"fichas":[],"vales":[]}');
+    return normalizeDraft(JSON.parse(localStorage.getItem(DRAFT_KEY) || '{"fichas":[],"vales":[]}'));
   } catch {
     return { fichas: [], vales: [] };
   }
+}
+
+function draftId(type) {
+  return `${type}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function normalizeDraft(rawDraft) {
+  const fichas = Array.isArray(rawDraft?.fichas) ? rawDraft.fichas : [];
+  const vales = Array.isArray(rawDraft?.vales) ? rawDraft.vales : [];
+  return {
+    fichas,
+    vales: vales.map((row) => ({ ...row, id: row.id || draftId("vale") })),
+  };
 }
 
 function saveDraft() {
@@ -304,6 +320,8 @@ function parseWorkbook(buffer) {
 function applyWorkbookStatus(status) {
   workbookPath = status.path || "";
   workbookFileName = status.exists ? status.fileName : "";
+  workbookBaseDirectory = status.baseDirectory || "";
+  askDirectoryEverySave = Boolean(status.askDirectoryEverySave);
   updateWorkbookState();
 }
 
@@ -372,6 +390,22 @@ async function reloadWorkbook() {
     await loadWorkbookFile(file, workbookHandle);
   } catch (error) {
     window.alert(`Não consegui atualizar a planilha autorizada.\n${error.message || error}`);
+  }
+}
+
+async function chooseWorkbookFolder() {
+  if (!desktopApi?.chooseDailyWorkbookDirectory) {
+    window.alert("A escolha de pasta fixa está disponível apenas no aplicativo instalado.");
+    return;
+  }
+
+  try {
+    const payload = await desktopApi.chooseDailyWorkbookDirectory();
+    if (payload.canceled) return;
+    applyWorkbookStatus(payload);
+    await refreshDesktopWorkbook();
+  } catch (error) {
+    window.alert(`Não consegui configurar a pasta.\n${error.message || error}`);
   }
 }
 
@@ -647,6 +681,45 @@ function readDailyForm() {
   return { ...base, ...calculateTotals(base) };
 }
 
+function amountInputValue(value) {
+  return Number(value || 0) ? String(value).replace(".", ",") : "";
+}
+
+function setMoneyInput(selector, value) {
+  document.querySelector(selector).value = amountInputValue(value);
+}
+
+function fillDailyForm(row) {
+  document.querySelector("#dailyDate").value = row.date || "";
+  document.querySelector("#dailyEcf").value = row.ecf || "";
+  setMoneyInput("#dailyAcerto", row.acerto);
+  setMoneyInput("#dailyDinheiro", row.dinheiro);
+  setMoneyInput("#dailyChAv", row.chAv);
+  setMoneyInput("#dailyCartao", row.cartao);
+  setMoneyInput("#dailyVales", row.vales);
+  setMoneyInput("#dailyPre", row.pre);
+  setMoneyInput("#dailyVendas", row.vendas);
+  setMoneyInput("#dailyReceb", row.receb);
+  setMoneyInput("#dailyDescon", row.descon);
+  setMoneyInput("#dailyJuros", row.juros);
+  setMoneyInput("#dailyChPEmi", row.chPEmi);
+  updateDailyTotalPreview();
+}
+
+function fillValeForm(row) {
+  document.querySelector("#valeDate").value = row.date || "";
+  document.querySelector("#valeDescricao").value = row.descricao || "";
+  setMoneyInput("#valeValor", row.valor);
+  document.querySelector("#valeObs").value = row.obs || "";
+}
+
+function updateDraftSubmitButtons() {
+  document.querySelector("#dailySubmitBtn").textContent =
+    editingDraft?.type === "ficha" ? "Atualizar ficha" : "Adicionar ficha";
+  document.querySelector("#valeSubmitBtn").textContent =
+    editingDraft?.type === "vale" ? "Atualizar vale" : "Adicionar vale";
+}
+
 function updateDailyTotalPreview() {
   const row = readDailyForm();
   document.querySelector("#dailyTotalPreview").textContent =
@@ -654,9 +727,43 @@ function updateDailyTotalPreview() {
 }
 
 function addOrReplaceDraftFicha(row) {
-  draft.fichas = draft.fichas.filter((item) => item.date !== row.date);
+  const editingDate = editingDraft?.type === "ficha" ? editingDraft.id : "";
+  draft.fichas = draft.fichas.filter((item) => item.date !== row.date && item.date !== editingDate);
   draft.fichas.push(row);
+  editingDraft = null;
   saveDraft();
+}
+
+function editDraftEntry(type, id) {
+  if (type === "ficha") {
+    const row = draft.fichas.find((item) => item.date === id);
+    if (!row) return;
+    editingDraft = { type, id };
+    fillDailyForm(row);
+    document.querySelector("#dailyDate").focus();
+  } else {
+    const row = draft.vales.find((item) => item.id === id);
+    if (!row) return;
+    editingDraft = { type, id };
+    fillValeForm(row);
+    document.querySelector("#valeDate").focus();
+  }
+  updateDraftSubmitButtons();
+}
+
+function removeDraftEntry(type, id) {
+  if (!window.confirm("Remover este lançamento pendente?")) return;
+  if (type === "ficha") {
+    draft.fichas = draft.fichas.filter((item) => item.date !== id);
+  } else {
+    draft.vales = draft.vales.filter((item) => item.id !== id);
+  }
+  if (editingDraft?.type === type && editingDraft.id === id) {
+    editingDraft = null;
+    updateDraftSubmitButtons();
+  }
+  saveDraft();
+  render();
 }
 
 function renderPreview() {
@@ -701,6 +808,26 @@ function renderDrafts() {
     <strong>${money.format(row.valor)}</strong>
   </div>`);
   list.innerHTML = [...dailyRows, ...valeRows].join("");
+  list.querySelectorAll(".return-row").forEach((rowElement, index) => {
+    const isFicha = index < draft.fichas.length;
+    const type = isFicha ? "ficha" : "vale";
+    const entry = isFicha ? draft.fichas[index] : draft.vales[index - draft.fichas.length];
+    const id = isFicha ? entry.date : entry.id;
+    rowElement.classList.add("draft-row");
+    rowElement.insertAdjacentHTML("beforeend", `
+      <div class="draft-actions">
+        <button class="ghost" data-edit-draft-type="${type}" data-edit-draft-id="${id}" type="button">Editar</button>
+        <button class="danger" data-remove-draft-type="${type}" data-remove-draft-id="${id}" type="button">Remover</button>
+      </div>
+    `);
+  });
+
+  document.querySelectorAll("[data-edit-draft-type]").forEach((button) => {
+    button.addEventListener("click", () => editDraftEntry(button.dataset.editDraftType, button.dataset.editDraftId));
+  });
+  document.querySelectorAll("[data-remove-draft-type]").forEach((button) => {
+    button.addEventListener("click", () => removeDraftEntry(button.dataset.removeDraftType, button.dataset.removeDraftId));
+  });
 }
 
 function render() {
@@ -708,10 +835,13 @@ function render() {
   renderDrafts();
   updateDailyTotalPreview();
   updateWorkbookState();
+  updateDraftSubmitButtons();
 }
 
-function clearForm(form) {
+function clearForm(form, dateSelector = "") {
+  const preservedDate = dateSelector ? document.querySelector(dateSelector).value : "";
   form.reset();
+  if (dateSelector) document.querySelector(dateSelector).value = preservedDate;
   updateDailyTotalPreview();
 }
 
@@ -726,7 +856,9 @@ async function saveWorkbook() {
     .join(", ");
   const isUpdating = Boolean(workbookFileName || workbookHandle || existingRows.fichas.length || existingRows.vales.length);
   const targetText = desktopApi
-    ? `A planilha será salva em:\n${workbookPath || "pasta padrão do Noxxus System"}`
+    ? askDirectoryEverySave
+      ? `O app pedirá a pasta antes de salvar.\nPasta atual:\n${workbookBaseDirectory || workbookPath || "não definida"}`
+      : `A planilha será salva em:\n${workbookPath || workbookBaseDirectory || "pasta padrão do Noxxus System"}`
     : workbookFileName
       ? `A planilha "${workbookFileName}" será alterada.`
       : "Uma nova planilha será criada.";
@@ -742,6 +874,7 @@ async function saveWorkbook() {
 
     existingRows = rowsToSave;
     draft = { fichas: [], vales: [] };
+    editingDraft = null;
     saveDraft();
     setStatus("ok", result.mode === "download" ? "Arquivo baixado" : "Planilha salva");
     const backupText = result.backupPath ? `\nBackup criado em:\n${result.backupPath}` : "";
@@ -779,32 +912,40 @@ document.querySelector("#dailyForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const row = readDailyForm();
   addOrReplaceDraftFicha(row);
-  clearForm(event.target);
+  clearForm(event.target, "#dailyDate");
   render();
 });
 
 document.querySelector("#valeForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  draft.vales.push({
-    id: `${Date.now()}`,
+  const row = {
+    id: editingDraft?.type === "vale" ? editingDraft.id : draftId("vale"),
     date: document.querySelector("#valeDate").value,
     descricao: document.querySelector("#valeDescricao").value.trim(),
     valor: parseAmount(document.querySelector("#valeValor").value),
     obs: document.querySelector("#valeObs").value.trim(),
-  });
+  };
+  if (editingDraft?.type === "vale") {
+    draft.vales = draft.vales.map((item) => (item.id === editingDraft.id ? row : item));
+    editingDraft = null;
+  } else {
+    draft.vales.push(row);
+  }
   saveDraft();
-  clearForm(event.target);
+  clearForm(event.target, "#valeDate");
   render();
 });
 
 document.querySelector("#clearDraftBtn").addEventListener("click", () => {
   if (!window.confirm("Limpar todos os lançamentos pendentes?")) return;
   draft = { fichas: [], vales: [] };
+  editingDraft = null;
   saveDraft();
   render();
 });
 
 document.querySelector("#refreshWorkbookBtn").addEventListener("click", reloadWorkbook);
+document.querySelector("#chooseWorkbookFolderBtn").addEventListener("click", chooseWorkbookFolder);
 document.querySelector("#saveWorkbookBtn").addEventListener("click", saveWorkbook);
 
 document.querySelector("#workbookFileInput").addEventListener("change", async (event) => {
@@ -823,5 +964,7 @@ if (desktopApi) {
   setStatus("", "Buscando");
   refreshDesktopWorkbook();
 } else {
+  document.querySelector("#chooseWorkbookFolderBtn").disabled = true;
+  document.querySelector("#chooseWorkbookFolderBtn").title = "Disponível apenas no aplicativo instalado";
   render();
 }

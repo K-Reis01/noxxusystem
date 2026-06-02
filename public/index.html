@@ -21,7 +21,10 @@
           </nav>
           <h1>Conferência de Caixa</h1>
         </div>
-        <div class="status-pill" id="statusPill">Aguardando CX</div>
+        <div class="topbar-actions">
+          <button class="ghost" id="clearAllBtn" type="button">Limpar tudo</button>
+          <div class="status-pill" id="statusPill">Aguardando CX</div>
+        </div>
       </header>
 
       <section class="summary-grid" aria-label="Resumo da conferência">
@@ -147,6 +150,7 @@
             <div class="section-head">
               <h2>Resultado da conferência</h2>
               <div class="actions">
+                <button id="closeCashBtn" type="button">Fechar caixa</button>
                 <button id="exportReportBtn" type="button">Exportar relatório</button>
                 <button class="ghost" id="clearBtn" type="button">Limpar conferência</button>
               </div>
@@ -163,6 +167,117 @@
         </section>
       </section>
     </main>
+
+    <div class="modal-layer" id="closeCashModal" hidden>
+      <section class="panel close-cash-card" role="dialog" aria-modal="true" aria-labelledby="closeCashTitle">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">Fechamento</span>
+            <h2 id="closeCashTitle">Fechar caixa</h2>
+          </div>
+          <button class="ghost" id="closeCashModalBtn" type="button">Fechar</button>
+        </div>
+
+        <section class="summary-grid close-cash-summary" aria-label="Resumo do fechamento">
+          <div class="metric">
+            <span>Data</span>
+            <strong id="closeCashDateLabel">-</strong>
+          </div>
+          <div class="metric">
+            <span>Ficha pendente</span>
+            <strong id="closeCashFichaCount">0</strong>
+          </div>
+          <div class="metric emphasis">
+            <span>Vales pendentes</span>
+            <strong id="closeCashValeCount">0</strong>
+          </div>
+        </section>
+
+        <section class="daily-workspace close-cash-workspace">
+          <aside class="daily-left">
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Ficha diária</h3>
+                <span id="closeDailyTotalPreview">Total 1: R$ 0,00</span>
+              </div>
+              <form class="daily-form" id="closeDailyForm">
+                <label>Data <input id="closeDailyDate" type="date" readonly required /></label>
+                <label>ECF <input id="closeDailyEcf" type="text" autocomplete="off" /></label>
+                <label>Acerto <input data-close-money-field id="closeDailyAcerto" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>Dinheiro <input data-close-money-field id="closeDailyDinheiro" type="text" inputmode="decimal" readonly /></label>
+                <label>CH AV <input data-close-money-field id="closeDailyChAv" type="text" inputmode="decimal" readonly /></label>
+                <label>Cartão <input data-close-money-field id="closeDailyCartao" type="text" inputmode="decimal" readonly /></label>
+                <label>Vales <input data-close-money-field id="closeDailyVales" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>Pré <input data-close-money-field id="closeDailyPre" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>Vendas <input data-close-money-field id="closeDailyVendas" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>Receb. <input data-close-money-field id="closeDailyReceb" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>Descon. <input data-close-money-field id="closeDailyDescon" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>Juros <input data-close-money-field id="closeDailyJuros" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <label>CH P/ EMI <input data-close-money-field id="closeDailyChPEmi" type="text" inputmode="decimal" placeholder="0,00" /></label>
+                <button id="closeDailySubmitBtn" type="submit">Adicionar ficha</button>
+              </form>
+            </article>
+
+            <article class="panel">
+              <h3>Vale de caixa</h3>
+              <form class="daily-form" id="closeValeForm">
+                <label>Data <input id="closeValeDate" type="date" readonly required /></label>
+                <label class="wide-field">Discriminação <input id="closeValeDescricao" type="text" autocomplete="off" required /></label>
+                <label>Valor <input id="closeValeValor" type="text" inputmode="decimal" placeholder="0,00" required /></label>
+                <label>Obs. dia <input id="closeValeObs" type="text" autocomplete="off" /></label>
+                <button id="closeValeSubmitBtn" type="submit">Adicionar vale</button>
+              </form>
+            </article>
+          </aside>
+
+          <section class="daily-right">
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Prévia da planilha</h3>
+                <div class="actions">
+                  <button class="ghost" id="closeChooseWorkbookFolderBtn" type="button">Escolher pasta</button>
+                  <button class="ghost" id="closeRefreshWorkbookBtn" type="button">Buscar planilha</button>
+                </div>
+              </div>
+              <p class="empty-state" id="closeWorkbookPath">O app buscará a planilha automaticamente nos arquivos.</p>
+              <div class="daily-preview">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Acerto</th>
+                      <th>Dinheiro</th>
+                      <th>CH AV</th>
+                      <th>Cartão</th>
+                      <th>Total 1</th>
+                      <th>Total 2</th>
+                      <th>Total 3</th>
+                    </tr>
+                  </thead>
+                  <tbody id="closeDailyPreviewBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Lançamentos a salvar</h3>
+                <button class="ghost" id="closeClearDraftBtn" type="button">Limpar pendentes</button>
+              </div>
+              <div class="return-list" id="closeDraftList"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Salvar</h3>
+                <span id="closeSaveSummary">Nenhum lançamento pendente</span>
+              </div>
+              <button id="closeSaveWorkbookBtn" type="button">Salvar planilha</button>
+            </article>
+          </section>
+        </section>
+      </section>
+    </div>
 
     <script src="./vendor/xlsx.full.min.js"></script>
     <script type="module" src="./app.js"></script>
